@@ -21,18 +21,18 @@ interface StockRowProps {
 
 const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand }) => {
   return (
-    <tr className="hover:bg-slate-50 transition">
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
       <td className="px-4 py-3 whitespace-nowrap">
-        <span className="font-semibold text-slate-800">{stock.symbol}</span>
+        <span className="font-semibold text-slate-800 dark:text-slate-200">{stock.symbol}</span>
       </td>
       
       <td className="px-4 py-3">
-        <div className="text-sm text-slate-700">{stock.name}</div>
-        <div className="text-xs text-slate-500">{stock.industry}</div>
+        <div className="text-sm text-slate-700 dark:text-slate-300">{stock.name}</div>
+        <div className="text-xs text-slate-500 dark:text-slate-500">{stock.industry}</div>
       </td>
       
       <td className="px-4 py-3 text-right whitespace-nowrap">
-        <span className="font-medium text-slate-800">{formatPrice(stock.price)}</span>
+        <span className="font-medium text-slate-800 dark:text-slate-200">{formatPrice(stock.price)}</span>
       </td>
       
       <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -72,13 +72,13 @@ const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand }
       </td>
       
       <td className="px-4 py-3">
-        <span className="text-sm text-slate-700">{stock.sector}</span>
+        <span className="text-sm text-slate-700 dark:text-slate-300">{stock.sector}</span>
       </td>
       
       <td className="px-4 py-3">
         <button
           onClick={onToggleExpand}
-          className="text-blue-600 hover:text-blue-800"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
         >
           {isExpanded ? (
             <ChevronUp className="w-5 h-5" />

@@ -31,15 +31,15 @@ const StockFilters: React.FC<StockFiltersProps> = ({
   }, [filters, onFilterChange]);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 mb-6 transition-colors">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-slate-600" />
-          <h2 className="text-lg font-semibold text-slate-800">Filters</h2>
+          <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Filters</h2>
         </div>
         <button
           onClick={onResetFilters}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors"
         >
           Reset All
         </button>
@@ -48,7 +48,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* RSI Range */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             RSI Range: {filters.rsiMin} - {filters.rsiMax}
           </label>
           <div className="flex gap-2">
@@ -56,7 +56,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
               type="number"
               value={filters.rsiMin}
               onChange={(e) => onFilterChange('rsiMin', Number(e.target.value))}
-              className="w-20 px-2 py-1 border border-slate-300 rounded"
+              className="w-20 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 transition-colors"
               min="0"
               max="100"
             />
@@ -64,7 +64,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
               type="number"
               value={filters.rsiMax}
               onChange={(e) => onFilterChange('rsiMax', Number(e.target.value))}
-              className="w-20 px-2 py-1 border border-slate-300 rounded"
+              className="w-20 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 transition-colors"
               min="0"
               max="100"
             />
@@ -73,7 +73,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
 
         {/* Price Range */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Price Range
           </label>
           <div className="flex gap-2">
@@ -81,14 +81,14 @@ const StockFilters: React.FC<StockFiltersProps> = ({
               type="number"
               value={filters.priceMin}
               onChange={(e) => onFilterChange('priceMin', Number(e.target.value))}
-              className="w-24 px-2 py-1 border border-slate-300 rounded"
+              className="w-24 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 transition-colors"
               placeholder="Min"
             />
             <input
               type="number"
               value={filters.priceMax}
               onChange={(e) => onFilterChange('priceMax', Number(e.target.value))}
-              className="w-24 px-2 py-1 border border-slate-300 rounded"
+              className="w-24 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 transition-colors"
               placeholder="Max"
             />
           </div>
@@ -96,19 +96,19 @@ const StockFilters: React.FC<StockFiltersProps> = ({
 
         {/* Equilibrium Zone */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Equilibrium Zone
           </label>
           <div className="flex flex-col gap-1">
             {EQUILIBRIUM_ZONES.map(zone => (
-              <label key={zone} className="flex items-center gap-2">
+              <label key={zone} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.equilibriumZone.includes(zone)}
                   onChange={() => handleArrayToggle('equilibriumZone', zone)}
-                  className="rounded"
+                  className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
                 />
-                <span className="text-sm capitalize">{zone}</span>
+                <span className="text-sm capitalize text-slate-700 dark:text-slate-300">{zone}</span>
               </label>
             ))}
           </div>
@@ -116,19 +116,19 @@ const StockFilters: React.FC<StockFiltersProps> = ({
 
         {/* Signal */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Signal
           </label>
           <div className="flex flex-col gap-1">
             {SIGNALS.map(sig => (
-              <label key={sig} className="flex items-center gap-2">
+              <label key={sig} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.signals.includes(sig)}
                   onChange={() => handleArrayToggle('signals', sig)}
-                  className="rounded"
+                  className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
                 />
-                <span className="text-sm capitalize">{sig}</span>
+                <span className="text-sm capitalize text-slate-700 dark:text-slate-300">{sig}</span>
               </label>
             ))}
           </div>
@@ -139,7 +139,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         {/* Volume Profile */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Volume Profile
           </label>
           <div className="flex gap-2">
@@ -156,7 +156,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
 
         {/* Trend */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Trend
           </label>
           <div className="flex gap-2">
@@ -174,7 +174,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
 
       {/* Sector Filter */}
       <div className="mt-4">
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
           Sectors
         </label>
         <div className="flex flex-wrap gap-2">

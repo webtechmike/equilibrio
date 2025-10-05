@@ -26,26 +26,26 @@ const StockTable: React.FC<StockTableProps> = ({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden transition-colors">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-slate-600">Loading stocks...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+          <span className="ml-2 text-slate-600 dark:text-slate-400">Loading stocks...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-        <p className="text-sm text-slate-600">
-          Showing <span className="font-semibold text-slate-800">{stocks.length}</span> stocks
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden transition-colors">
+      <div className="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Showing <span className="font-semibold text-slate-800 dark:text-slate-200">{stocks.length}</span> stocks
         </p>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-slate-100 border-b border-slate-200">
+          <thead className="bg-slate-100 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
             <tr>
               <TableHeader 
                 label="Symbol" 
@@ -90,7 +90,7 @@ const StockTable: React.FC<StockTableProps> = ({
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {stocks.map((stock) => (
               <React.Fragment key={stock.symbol}>
                 <StockRow 
@@ -101,7 +101,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 
                 {/* Expanded Details Row */}
                 {expandedRow === stock.symbol && (
-                  <tr className="bg-slate-50">
+                  <tr className="bg-slate-50 dark:bg-slate-700/30">
                     <td colSpan={10} className="px-4 py-4">
                       <StockDetails stock={stock} />
                     </td>
@@ -115,7 +115,7 @@ const StockTable: React.FC<StockTableProps> = ({
 
       {stocks.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-slate-500">No stocks match your current filters</p>
+          <p className="text-slate-500 dark:text-slate-400">No stocks match your current filters</p>
         </div>
       )}
     </div>

@@ -36,8 +36,8 @@ const TableHeader: React.FC<TableHeaderProps> = ({
 
   return (
     <th
-      className={`px-4 py-3 ${alignmentClasses[align]} text-xs font-semibold text-slate-600 uppercase tracking-wider ${
-        sortable ? 'cursor-pointer hover:bg-slate-200' : ''
+      className={`px-4 py-3 ${alignmentClasses[align]} text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider transition-colors ${
+        sortable ? 'cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600' : ''
       }`}
       onClick={handleClick}
     >

@@ -19,10 +19,10 @@ const StockDetails: React.FC<StockDetailsProps> = ({ stock }) => {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {/* Technical Indicators */}
       <div>
-        <h4 className="text-xs font-semibold text-slate-600 uppercase mb-2">
+        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-2">
           Technical Indicators
         </h4>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
           <DataRow label="Stoch RSI" value={stock.stochRsi.toFixed(1)} />
           <DataRow label="Historic RSI" value={stock.historicRsiAvg.toFixed(1)} />
           <DataRow 
@@ -36,10 +36,10 @@ const StockDetails: React.FC<StockDetailsProps> = ({ stock }) => {
 
       {/* Moving Averages */}
       <div>
-        <h4 className="text-xs font-semibold text-slate-600 uppercase mb-2">
+        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-2">
           Moving Averages
         </h4>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
           <DataRow label="SMA 50" value={formatPrice(stock.sma50)} />
           <DataRow label="SMA 200" value={formatPrice(stock.sma200)} />
           <DataRow label="EMA 20" value={formatPrice(stock.ema20)} />
@@ -53,10 +53,10 @@ const StockDetails: React.FC<StockDetailsProps> = ({ stock }) => {
 
       {/* Equilibrium Analysis */}
       <div>
-        <h4 className="text-xs font-semibold text-slate-600 uppercase mb-2">
+        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-2">
           Equilibrium Analysis
         </h4>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
           <DataRow label="Equilibrium" value={formatPrice(stock.equilibriumLevel)} />
           <DataRow 
             label="Distance" 
@@ -78,10 +78,10 @@ const StockDetails: React.FC<StockDetailsProps> = ({ stock }) => {
 
       {/* Market Data */}
       <div>
-        <h4 className="text-xs font-semibold text-slate-600 uppercase mb-2">
+        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-2">
           Market Data
         </h4>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
           <DataRow label="Volume" value={formatVolume(stock.volume)} />
           <DataRow label="Market Cap" value={formatMarketCap(stock.marketCap)} />
           <DataRow 
