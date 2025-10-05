@@ -1,0 +1,52 @@
+services:
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: equilibrio-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - equilibrio-network
+
+  # Go Backend
+  equilibrio-backend:
+    build:
+      context: ./equilibrio-backend
+      dockerfile: Dockerfile
+    container_name: equilibrio-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - redis
+    networks:
+      - equilibrio-network
+    restart: unless-stopped
+
+  # React Frontend
+  equilibrio-frontend:
+    build:
+      context: ./equilibrio-frontend
+      dockerfile: Dockerfile
+    container_name: equilibrio-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - equilibrio-backend
+    networks:
+      - equilibrio-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  equilibrio-network:
+    driver: bridge
