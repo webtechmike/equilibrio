@@ -15,7 +15,8 @@
     "react-dom": "^18.2.0",
     "lucide-react": "^0.294.0",
     "axios": "^1.6.2",
-    "react-query": "^3.39.3"
+    "react-query": "^3.39.3",
+    "lightweight-charts": "^4.1.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

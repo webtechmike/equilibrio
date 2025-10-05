@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { StockData, StockListRequest, StockListResponse, TechnicalIndicators } from '../types';
+import { StockData, StockListRequest, StockListResponse, TechnicalIndicators, CandlestickData } from '../types';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -84,6 +84,12 @@ export class ApiService {
   static async getStock(symbol: string): Promise<StockData> {
     const response: AxiosResponse<StockData> = await api.get(`/stocks/${symbol}`);
     return response.data;
+  }
+
+  // Get stock chart data
+  static async getStockChart(symbol: string, days: number = 90): Promise<CandlestickData[]> {
+    const response: AxiosResponse<{ symbol: string; data: CandlestickData[] }> = await api.get(`/stocks/${symbol}/chart?days=${days}`);
+    return response.data.data;
   }
 
   // Get available sectors

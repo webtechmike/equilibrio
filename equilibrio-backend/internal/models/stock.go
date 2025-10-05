@@ -78,6 +78,21 @@ type StockListResponse struct {
 	TotalPages int         `json:"totalPages"`
 }
 
+// CandlestickData represents a single candlestick bar
+type CandlestickData struct {
+	Time  string  `json:"time"` // ISO 8601 date format
+	Open  float64 `json:"open"`
+	High  float64 `json:"high"`
+	Low   float64 `json:"low"`
+	Close float64 `json:"close"`
+}
+
+// ChartDataResponse represents chart data for a stock
+type ChartDataResponse struct {
+	Symbol string            `json:"symbol"`
+	Data   []CandlestickData `json:"data"`
+}
+
 // PriceData represents historical price data for calculations
 type PriceData struct {
 	Date   time.Time `json:"date"`

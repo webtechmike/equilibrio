@@ -81,6 +81,15 @@ export interface TechnicalIndicators {
   macdHistogram: number;
 }
 
+// Candlestick chart data
+export interface CandlestickData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 // API response types
 export interface ApiResponse<T> {
   data: T;

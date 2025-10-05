@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"strings"
@@ -142,6 +143,66 @@ func (s *MarketDataService) GetSectors() ([]string, error) {
 		"Communication Services", "Utilities", "Basic Materials",
 	}
 	return sectors, nil
+}
+
+// GetStockChart returns candlestick chart data for a stock (default 90 days)
+func (s *MarketDataService) GetStockChart(symbol string) (*models.ChartDataResponse, error) {
+	return s.GetStockChartWithDays(symbol, 90)
+}
+
+// GetStockChartWithDays returns candlestick chart data for a stock with specified days
+func (s *MarketDataService) GetStockChartWithDays(symbol string, days int) (*models.ChartDataResponse, error) {
+	// Get the stock to get its current price
+	stock, err := s.GetStock(symbol)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate mock candlestick data for specified days
+	data := s.generateMockChartData(stock.Price, days)
+
+	response := &models.ChartDataResponse{
+		Symbol: symbol,
+		Data:   data,
+	}
+
+	return response, nil
+}
+
+// generateMockChartData generates realistic candlestick data
+func (s *MarketDataService) generateMockChartData(currentPrice float64, days int) []models.CandlestickData {
+	data := make([]models.CandlestickData, days)
+	price := currentPrice * 0.95 // Start 5% below current price
+
+	now := time.Now()
+
+	for i := 0; i < days; i++ {
+		// Calculate date (going backwards from today)
+		date := now.AddDate(0, 0, -(days - i - 1))
+
+		// Random price movement
+		change := (rand.Float64() - 0.5) * 0.04 // +/- 2% daily change
+		open := price
+		close := price * (1 + change)
+
+		// High and low based on volatility
+		volatility := 0.015 // 1.5% daily volatility
+		high := math.Max(open, close) * (1 + rand.Float64()*volatility)
+		low := math.Min(open, close) * (1 - rand.Float64()*volatility)
+
+		data[i] = models.CandlestickData{
+			Time:  date.Format("2006-01-02"),
+			Open:  math.Round(open*100) / 100,
+			High:  math.Round(high*100) / 100,
+			Low:   math.Round(low*100) / 100,
+			Close: math.Round(close*100) / 100,
+		}
+
+		// Update price for next day
+		price = close
+	}
+
+	return data
 }
 
 // RefreshAllData refreshes all stock data

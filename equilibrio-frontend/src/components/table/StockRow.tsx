@@ -17,11 +17,12 @@ interface StockRowProps {
   stock: StockData;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onStockClick: () => void;
 }
 
-const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand }) => {
+const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand, onStockClick }) => {
   return (
-    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={onStockClick}>
       <td className="px-4 py-3 whitespace-nowrap">
         <span className="font-semibold text-slate-800 dark:text-slate-200">{stock.symbol}</span>
       </td>
@@ -77,7 +78,10 @@ const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand }
       
       <td className="px-4 py-3">
         <button
-          onClick={onToggleExpand}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand();
+          }}
           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
         >
           {isExpanded ? (

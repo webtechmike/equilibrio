@@ -12,6 +12,7 @@ interface StockTableProps {
   onSort: (field: string) => void;
   onRowExpand: (symbol: string | null) => void;
   expandedRow: string | null;
+  onStockClick: (stock: StockData) => void;
 }
 
 const StockTable: React.FC<StockTableProps> = ({
@@ -22,6 +23,7 @@ const StockTable: React.FC<StockTableProps> = ({
   onSort,
   onRowExpand,
   expandedRow,
+  onStockClick,
 }) => {
 
   if (loading) {
@@ -97,6 +99,7 @@ const StockTable: React.FC<StockTableProps> = ({
                   stock={stock}
                   isExpanded={expandedRow === stock.symbol}
                   onToggleExpand={() => onRowExpand(expandedRow === stock.symbol ? null : stock.symbol)}
+                  onStockClick={() => onStockClick(stock)}
                 />
                 
                 {/* Expanded Details Row */}

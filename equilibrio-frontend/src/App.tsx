@@ -4,10 +4,11 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import StockHeader from './components/StockHeader';
 import StockFilters from './components/StockFilters';
 import StockTable from './components/StockTable';
+import CandlestickChart from './components/CandlestickChart';
 import EquilibriumInfo from './components/EquilibriumInfo';
 import { useStocks, useSectors, useStockFilters } from './hooks/useStocks';
 import { ApiService } from './services/api';
-import { StockListRequest } from './types';
+import { StockListRequest, CandlestickData, StockData } from './types';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -25,6 +26,8 @@ const App: React.FC = () => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
+  const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
+  const [chartData, setChartData] = useState<CandlestickData[]>([]);
 
   const { filters, updateFilter, resetFilters } = useStockFilters();
   const { data: sectors = [] } = useSectors();
@@ -88,6 +91,33 @@ const App: React.FC = () => {
     setExpandedRow(symbol);
   }, []);
 
+  const handleStockClick = useCallback(async (stock: StockData) => {
+    setSelectedStock(stock);
+    try {
+      const data = await ApiService.getStockChart(stock.symbol, 90); // Default to 3 months
+      setChartData(data);
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+      setChartData([]);
+    }
+  }, []);
+
+  const handleTimeframeChange = useCallback(async (days: number) => {
+    if (!selectedStock) return;
+    try {
+      const data = await ApiService.getStockChart(selectedStock.symbol, days);
+      setChartData(data);
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+      setChartData([]);
+    }
+  }, [selectedStock]);
+
+  const handleCloseChart = useCallback(() => {
+    setSelectedStock(null);
+    setChartData([]);
+  }, []);
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6 transition-colors">
@@ -125,6 +155,16 @@ const App: React.FC = () => {
           onResetFilters={resetFilters}
         />
 
+        {selectedStock && (
+          <CandlestickChart
+            symbol={selectedStock.symbol}
+            companyName={selectedStock.name}
+            data={chartData}
+            onClose={handleCloseChart}
+            onTimeframeChange={handleTimeframeChange}
+          />
+        )}
+
         <StockTable
           stocks={stocksData?.stocks || []}
           loading={isLoading}
@@ -133,6 +173,7 @@ const App: React.FC = () => {
           onSort={handleSort}
           onRowExpand={handleRowExpand}
           expandedRow={expandedRow}
+          onStockClick={handleStockClick}
         />
 
         <EquilibriumInfo />

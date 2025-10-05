@@ -119,6 +119,31 @@ func (h *Handlers) GetStock(c *gin.Context) {
 	c.JSON(http.StatusOK, stock)
 }
 
+// GetStockChart handles GET /api/stocks/:symbol/chart
+func (h *Handlers) GetStockChart(c *gin.Context) {
+	symbol := c.Param("symbol")
+	if symbol == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Symbol is required"})
+		return
+	}
+
+	// Get optional days parameter (default to 90)
+	daysStr := c.DefaultQuery("days", "90")
+	days, err := strconv.Atoi(daysStr)
+	if err != nil || days < 1 || days > 365 {
+		days = 90 // Default to 90 days if invalid
+	}
+
+	// Get chart data from market data service
+	chartData, err := h.marketDataService.GetStockChartWithDays(symbol, days)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chart data not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, chartData)
+}
+
 // GetSectors handles GET /api/sectors
 func (h *Handlers) GetSectors(c *gin.Context) {
 	sectors, err := h.marketDataService.GetSectors()
