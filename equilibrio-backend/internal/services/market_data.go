@@ -169,26 +169,38 @@ func (s *MarketDataService) GetStockChartWithDays(symbol string, days int) (*mod
 	return response, nil
 }
 
-// generateMockChartData generates realistic candlestick data
+// generateMockChartData generates realistic candlestick data that ends at currentPrice
 func (s *MarketDataService) generateMockChartData(currentPrice float64, days int) []models.CandlestickData {
 	data := make([]models.CandlestickData, days)
-	price := currentPrice * 0.95 // Start 5% below current price
-
 	now := time.Now()
+	
+	// Use a consistent seed based on the current price to ensure repeatability
+	// This ensures the same stock always generates the same historical pattern
+	seed := int64(currentPrice * 1000)
+	rng := rand.New(rand.NewSource(seed))
 
+	// First pass: generate random walk backwards, then we'll normalize
+	prices := make([]float64, days+1)
+	prices[days] = currentPrice // End at current price
+	
+	// Work backwards from current price
+	for i := days - 1; i >= 0; i-- {
+		// Random daily change: +/- 2%
+		change := (rng.Float64() - 0.5) * 0.04
+		prices[i] = prices[i+1] / (1 + change) // Reverse the change
+	}
+
+	// Second pass: create candlesticks
 	for i := 0; i < days; i++ {
-		// Calculate date (going backwards from today)
 		date := now.AddDate(0, 0, -(days - i - 1))
-
-		// Random price movement
-		change := (rand.Float64() - 0.5) * 0.04 // +/- 2% daily change
-		open := price
-		close := price * (1 + change)
-
+		
+		open := prices[i]
+		close := prices[i+1]
+		
 		// High and low based on volatility
-		volatility := 0.015 // 1.5% daily volatility
-		high := math.Max(open, close) * (1 + rand.Float64()*volatility)
-		low := math.Min(open, close) * (1 - rand.Float64()*volatility)
+		volatility := 0.015 // 1.5% intraday volatility
+		high := math.Max(open, close) * (1 + rng.Float64()*volatility)
+		low := math.Min(open, close) * (1 - rng.Float64()*volatility)
 
 		data[i] = models.CandlestickData{
 			Time:  date.Format("2006-01-02"),
@@ -197,9 +209,6 @@ func (s *MarketDataService) generateMockChartData(currentPrice float64, days int
 			Low:   math.Round(low*100) / 100,
 			Close: math.Round(close*100) / 100,
 		}
-
-		// Update price for next day
-		price = close
 	}
 
 	return data
@@ -245,21 +254,25 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 	}
 
 	var stocks []models.StockData
-	for _, ticker := range tickers {
-		basePrice := rand.Float64()*500 + 50
-		changePercent := (rand.Float64() - 0.5) * 10
-		rsi := rand.Float64() * 100
-		sma50 := basePrice * (0.9 + rand.Float64()*0.2)
-		sma200 := basePrice * (0.85 + rand.Float64()*0.3)
-		high52Week := basePrice * (1 + rand.Float64()*0.3)
-		low52Week := basePrice * (0.7 + rand.Float64()*0.2)
+	for i, ticker := range tickers {
+		// Use consistent seed per symbol for repeatable data
+		symbolSeed := int64(len(ticker.symbol)*100 + i)
+		rng := rand.New(rand.NewSource(symbolSeed))
+		
+		basePrice := rng.Float64()*500 + 50
+		changePercent := (rng.Float64() - 0.5) * 10
+		rsi := rng.Float64() * 100
+		sma50 := basePrice * (0.9 + rng.Float64()*0.2)
+		sma200 := basePrice * (0.85 + rng.Float64()*0.3)
+		high52Week := basePrice * (1 + rng.Float64()*0.3)
+		low52Week := basePrice * (0.7 + rng.Float64()*0.2)
 
 		// Calculate equilibrium (50% retracement from low to high)
 		equilibriumLevel := (high52Week + low52Week) / 2
 		priceToEquilibrium := ((basePrice - equilibriumLevel) / equilibriumLevel) * 100
 
-		macd := (rand.Float64() - 0.5) * 5
-		macdSignal := macd + (rand.Float64()-0.5)*2
+		macd := (rng.Float64() - 0.5) * 5
+		macdSignal := macd + (rng.Float64()-0.5)*2
 
 		// Determine trend based on moving averages
 		var trend string = "neutral"
@@ -281,7 +294,7 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 			signal = "sell" // Strong premium
 		} else {
 			// Random distribution for more variety
-			randSignal := rand.Float64()
+			randSignal := rng.Float64()
 			if randSignal < 0.2 {
 				signal = "buy"
 			} else if randSignal < 0.4 {
@@ -292,7 +305,7 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 		}
 
 		// Volume profile based on volume
-		avgVolume := rand.Float64() * 100000000
+		avgVolume := rng.Float64() * 100000000
 		var volumeProfile string = "medium"
 		if avgVolume > 50000000 {
 			volumeProfile = "high"
@@ -308,14 +321,14 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 			ChangePercent:          changePercent,
 			Volume:                 int64(avgVolume),
 			Sector:                 ticker.sector,
-			Industry:               s.getIndustryForSector(ticker.sector),
-			MarketCap:              basePrice * (rand.Float64()*1000000000 + 100000000),
+			Industry:               s.getIndustryForSectorWithSeed(ticker.sector, symbolSeed),
+			MarketCap:              basePrice * (rng.Float64()*1000000000 + 100000000),
 			RSI:                    rsi,
-			StochRSI:               rand.Float64() * 100,
-			HistoricRSIAvg:         50 + (rand.Float64()-0.5)*20,
+			StochRSI:               rng.Float64() * 100,
+			HistoricRSIAvg:         50 + (rng.Float64()-0.5)*20,
 			SMA50:                  sma50,
 			SMA200:                 sma200,
-			EMA20:                  basePrice * (0.95 + rand.Float64()*0.1),
+			EMA20:                  basePrice * (0.95 + rng.Float64()*0.1),
 			MACD:                   macd,
 			MACDSignal:             macdSignal,
 			MACDHistogram:          macd - macdSignal,
@@ -337,6 +350,11 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 
 // getIndustryForSector returns a random industry for a given sector
 func (s *MarketDataService) getIndustryForSector(sector string) string {
+	return s.getIndustryForSectorWithSeed(sector, time.Now().UnixNano())
+}
+
+// getIndustryForSectorWithSeed returns an industry for a given sector using a seed for consistency
+func (s *MarketDataService) getIndustryForSectorWithSeed(sector string, seed int64) string {
 	industries := map[string][]string{
 		"Technology":             {"Software", "Semiconductors", "Hardware", "IT Services"},
 		"Healthcare":             {"Biotechnology", "Pharmaceuticals", "Medical Devices", "Healthcare Plans"},
@@ -352,115 +370,116 @@ func (s *MarketDataService) getIndustryForSector(sector string) string {
 	}
 
 	if sectorIndustries, exists := industries[sector]; exists {
-		return sectorIndustries[rand.Intn(len(sectorIndustries))]
+		rng := rand.New(rand.NewSource(seed))
+		return sectorIndustries[rng.Intn(len(sectorIndustries))]
 	}
 	return "General"
 }
 
 // applyFilters applies the filter criteria to the stock list
+// All filters are combined with AND logic - stock must pass all active filters
 func (s *MarketDataService) applyFilters(stocks []models.StockData, filter models.StockFilter) []models.StockData {
 	var filtered []models.StockData
 
 	for _, stock := range stocks {
-		// Search term filter
-		if filter.SearchTerm != "" {
-			searchLower := strings.ToLower(filter.SearchTerm)
-			if !strings.Contains(strings.ToLower(stock.Symbol), searchLower) &&
-				!strings.Contains(strings.ToLower(stock.Name), searchLower) {
-				continue
-			}
-		}
-
-		// Sector filter
-		if len(filter.Sectors) > 0 {
-			found := false
-			for _, sector := range filter.Sectors {
-				if stock.Sector == sector {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		// RSI filter
-		if stock.RSI < filter.RSIMin || stock.RSI > filter.RSIMax {
+		if !s.matchesFilters(stock, filter) {
 			continue
 		}
-
-		// Price filter
-		if stock.Price < filter.PriceMin || stock.Price > filter.PriceMax {
-			continue
-		}
-
-		// Volume profile filter
-		if len(filter.VolumeProfile) > 0 {
-			found := false
-			for _, profile := range filter.VolumeProfile {
-				if stock.VolumeProfile == profile {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		// Signal filter
-		if len(filter.Signals) > 0 {
-			found := false
-			for _, signal := range filter.Signals {
-				if stock.Signal == signal {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		// Trend filter
-		if len(filter.Trend) > 0 {
-			found := false
-			for _, trend := range filter.Trend {
-				if stock.Trend == trend {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		// Equilibrium zone filter
-		if len(filter.EquilibriumZone) > 0 {
-			inDiscount := stock.PriceToEquilibrium < -5
-			inEquilibrium := stock.PriceToEquilibrium >= -5 && stock.PriceToEquilibrium <= 5
-			inPremium := stock.PriceToEquilibrium > 5
-
-			found := false
-			for _, zone := range filter.EquilibriumZone {
-				if (zone == "discount" && inDiscount) ||
-					(zone == "equilibrium" && inEquilibrium) ||
-					(zone == "premium" && inPremium) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
 		filtered = append(filtered, stock)
 	}
 
 	return filtered
+}
+
+// matchesFilters checks if a stock matches all active filter criteria
+func (s *MarketDataService) matchesFilters(stock models.StockData, filter models.StockFilter) bool {
+	// Search term filter (if provided)
+	if filter.SearchTerm != "" {
+		if !s.matchesSearchTerm(stock, filter.SearchTerm) {
+			return false
+		}
+	}
+
+	// Sector filter (if any sectors selected)
+	if len(filter.Sectors) > 0 {
+		if !s.containsString(filter.Sectors, stock.Sector) {
+			return false
+		}
+	}
+
+	// RSI range filter (always applied with defaults 0-100)
+	if stock.RSI < filter.RSIMin || stock.RSI > filter.RSIMax {
+		return false
+	}
+
+	// Price range filter (always applied with defaults)
+	if stock.Price < filter.PriceMin || stock.Price > filter.PriceMax {
+		return false
+	}
+
+	// Volume profile filter (if any selected)
+	if len(filter.VolumeProfile) > 0 {
+		if !s.containsString(filter.VolumeProfile, stock.VolumeProfile) {
+			return false
+		}
+	}
+
+	// Signal filter (if any selected)
+	if len(filter.Signals) > 0 {
+		if !s.containsString(filter.Signals, stock.Signal) {
+			return false
+		}
+	}
+
+	// Trend filter (if any selected)
+	if len(filter.Trend) > 0 {
+		if !s.containsString(filter.Trend, stock.Trend) {
+			return false
+		}
+	}
+
+	// Equilibrium zone filter (if any selected)
+	if len(filter.EquilibriumZone) > 0 {
+		if !s.matchesEquilibriumZone(stock, filter.EquilibriumZone) {
+			return false
+		}
+	}
+
+	// All filters passed
+	return true
+}
+
+// matchesSearchTerm checks if stock matches search term in symbol or name
+func (s *MarketDataService) matchesSearchTerm(stock models.StockData, searchTerm string) bool {
+	searchLower := strings.ToLower(searchTerm)
+	return strings.Contains(strings.ToLower(stock.Symbol), searchLower) ||
+		strings.Contains(strings.ToLower(stock.Name), searchLower)
+}
+
+// containsString checks if a slice contains a string
+func (s *MarketDataService) containsString(slice []string, str string) bool {
+	for _, item := range slice {
+		if item == str {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesEquilibriumZone checks if stock is in any of the specified equilibrium zones
+func (s *MarketDataService) matchesEquilibriumZone(stock models.StockData, zones []string) bool {
+	// Determine which zone the stock is in
+	var stockZone string
+	if stock.PriceToEquilibrium < -5 {
+		stockZone = "discount"
+	} else if stock.PriceToEquilibrium > 5 {
+		stockZone = "premium"
+	} else {
+		stockZone = "equilibrium"
+	}
+
+	// Check if stock's zone is in the requested zones
+	return s.containsString(zones, stockZone)
 }
 
 // applySorting applies sorting to the stock list
