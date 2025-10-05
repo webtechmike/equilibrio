@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from 'react-query';
 import { StockData, StockListRequest, StockListResponse, StockFilter } from '../types';
 import { ApiService } from '../services/api';
+import { saveFilterConfig, loadFilterConfig, clearFilterConfig } from '../utils/filterStorage';
 
 export const useStocks = (request: StockListRequest) => {
   const queryClient = useQueryClient();
@@ -50,19 +51,30 @@ export const useSectors = () => {
   );
 };
 
+const DEFAULT_FILTERS: StockFilter = {
+  searchTerm: '',
+  sectors: [],
+  rsiMin: 0,
+  rsiMax: 100,
+  priceMin: 0,
+  priceMax: 10000,
+  volumeProfile: [],
+  signals: [],
+  trend: [],
+  equilibriumZone: [],
+};
+
 export const useStockFilters = () => {
-  const [filters, setFilters] = useState<StockFilter>({
-    searchTerm: '',
-    sectors: [],
-    rsiMin: 0,
-    rsiMax: 100,
-    priceMin: 0,
-    priceMax: 10000,
-    volumeProfile: [],
-    signals: [],
-    trend: [],
-    equilibriumZone: [],
+  // Initialize from localStorage or use defaults
+  const [filters, setFilters] = useState<StockFilter>(() => {
+    const saved = loadFilterConfig();
+    return saved || DEFAULT_FILTERS;
   });
+
+  // Auto-save to localStorage whenever filters change
+  useEffect(() => {
+    saveFilterConfig(filters);
+  }, [filters]);
 
   const updateFilter = useCallback((key: keyof StockFilter, value: any) => {
     setFilters(prev => ({
@@ -72,23 +84,18 @@ export const useStockFilters = () => {
   }, []);
 
   const resetFilters = useCallback(() => {
-    setFilters({
-      searchTerm: '',
-      sectors: [],
-      rsiMin: 0,
-      rsiMax: 100,
-      priceMin: 0,
-      priceMax: 10000,
-      volumeProfile: [],
-      signals: [],
-      trend: [],
-      equilibriumZone: [],
-    });
+    setFilters(DEFAULT_FILTERS);
+    clearFilterConfig();
+  }, []);
+
+  const loadFilters = useCallback((newFilters: StockFilter) => {
+    setFilters(newFilters);
   }, []);
 
   return {
     filters,
     updateFilter,
     resetFilters,
+    loadFilters,
   };
 };

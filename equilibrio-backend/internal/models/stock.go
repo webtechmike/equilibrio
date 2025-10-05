@@ -115,3 +115,42 @@ type TechnicalIndicators struct {
 	MACDSignal     float64 `json:"macdSignal"`
 	MACDHistogram  float64 `json:"macdHistogram"`
 }
+
+// EquilibriumData represents equilibrium zone calculations
+type EquilibriumData struct {
+	Zone       string  `json:"zone"`       // "support", "resistance", "neutral"
+	Strength   float64 `json:"strength"`   // 0.0 to 1.0
+	Support    float64 `json:"support"`    // Support price level
+	Resistance float64 `json:"resistance"` // Resistance price level
+}
+
+// Quote represents a real-time stock quote from market data provider
+type Quote struct {
+	Symbol        string  `json:"symbol"`
+	Name          string  `json:"name"`
+	Price         float64 `json:"price"`
+	Change        float64 `json:"change"`
+	ChangePercent float64 `json:"changePercent"`
+	Volume        int64   `json:"volume"`
+	MarketCap     int64   `json:"marketCap"`
+	PERatio       float64 `json:"peRatio"`
+	DividendYield float64 `json:"dividendYield"`
+	Week52High    float64 `json:"week52High"`
+	Week52Low     float64 `json:"week52Low"`
+	Open          float64 `json:"open"`
+	High          float64 `json:"high"`
+	Low           float64 `json:"low"`
+	PreviousClose float64 `json:"previousClose"`
+	Sector        string  `json:"sector"`
+	Industry      string  `json:"industry"`
+}
+
+// FilterPreset represents a saved filter configuration
+type FilterPreset struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Filter      StockFilter `json:"filter"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
+}

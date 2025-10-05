@@ -29,7 +29,7 @@ const App: React.FC = () => {
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
 
-  const { filters, updateFilter, resetFilters } = useStockFilters();
+  const { filters, updateFilter, resetFilters, loadFilters } = useStockFilters();
   const { data: sectors = [] } = useSectors();
 
   const request: StockListRequest = useMemo(() => ({
@@ -145,6 +145,7 @@ const App: React.FC = () => {
           onSearchChange={handleSearchChange}
           onRefresh={handleRefresh}
           onExport={handleExport}
+          onLoadPreset={loadFilters}
           loading={isLoading}
         />
 

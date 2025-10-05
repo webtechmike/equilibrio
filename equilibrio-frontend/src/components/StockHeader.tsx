@@ -1,13 +1,15 @@
 import React from 'react';
 import { Search, RefreshCw, Download } from 'lucide-react';
-import { StockFilter } from '../types';
+import { StockFilter, StockFilters } from '../types';
 import ThemeToggle from './ui/ThemeToggle';
+import FilterPresets from './FilterPresets';
 
 interface StockHeaderProps {
   filters: StockFilter;
   onSearchChange: (value: string) => void;
   onRefresh: () => void;
   onExport: () => void;
+  onLoadPreset: (filters: StockFilters) => void;
   loading: boolean;
 }
 
@@ -16,6 +18,7 @@ const StockHeader: React.FC<StockHeaderProps> = ({
   onSearchChange,
   onRefresh,
   onExport,
+  onLoadPreset,
   loading,
 }) => {
   return (
@@ -27,6 +30,7 @@ const StockHeader: React.FC<StockHeaderProps> = ({
         </div>
         <div className="flex gap-3">
           <ThemeToggle />
+          <FilterPresets currentFilters={filters} onLoadPreset={onLoadPreset} />
           <button
             onClick={onRefresh}
             disabled={loading}

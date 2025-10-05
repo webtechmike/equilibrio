@@ -41,6 +41,9 @@ export interface StockFilter {
   equilibriumZone: string[];
 }
 
+// Alias for StockFilter (used in some components)
+export type StockFilters = StockFilter;
+
 export interface StockListRequest {
   // Filter fields (flattened to match backend)
   searchTerm: string;
