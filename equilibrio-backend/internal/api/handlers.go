@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"equilibrio-backend/internal/models"
 	"equilibrio-backend/internal/services"
@@ -38,6 +39,24 @@ func (h *Handlers) GetStocks(c *gin.Context) {
 		return
 	}
 
+	// Manually parse array parameters that Gin doesn't handle well
+	// Split comma-separated values
+	if sectorsParam := c.Query("sectors"); sectorsParam != "" {
+		req.Sectors = strings.Split(sectorsParam, ",")
+	}
+	if volumeProfileParam := c.Query("volumeProfile"); volumeProfileParam != "" {
+		req.VolumeProfile = strings.Split(volumeProfileParam, ",")
+	}
+	if signalsParam := c.Query("signals"); signalsParam != "" {
+		req.Signals = strings.Split(signalsParam, ",")
+	}
+	if trendParam := c.Query("trend"); trendParam != "" {
+		req.Trend = strings.Split(trendParam, ",")
+	}
+	if equilibriumZoneParam := c.Query("equilibriumZone"); equilibriumZoneParam != "" {
+		req.EquilibriumZone = strings.Split(equilibriumZoneParam, ",")
+	}
+
 	// Set defaults
 	if req.Page <= 0 {
 		req.Page = 1
@@ -53,13 +72,13 @@ func (h *Handlers) GetStocks(c *gin.Context) {
 	}
 
 	// Set default filter values
-	if req.Filter.RSIMin == 0 && req.Filter.RSIMax == 0 {
-		req.Filter.RSIMin = 0
-		req.Filter.RSIMax = 100
+	if req.RSIMin == 0 && req.RSIMax == 0 {
+		req.RSIMin = 0
+		req.RSIMax = 100
 	}
-	if req.Filter.PriceMin == 0 && req.Filter.PriceMax == 0 {
-		req.Filter.PriceMin = 0
-		req.Filter.PriceMax = 10000
+	if req.PriceMin == 0 && req.PriceMax == 0 {
+		req.PriceMin = 0
+		req.PriceMax = 10000
 	}
 
 	// Get stocks from service

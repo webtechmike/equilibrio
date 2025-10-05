@@ -29,7 +29,19 @@ const App: React.FC = () => {
   const { data: sectors = [] } = useSectors();
 
   const request: StockListRequest = {
-    filter: filters,
+    // Flattened filter fields
+    searchTerm: filters.searchTerm,
+    sectors: filters.sectors,
+    rsiMin: filters.rsiMin,
+    rsiMax: filters.rsiMax,
+    priceMin: filters.priceMin,
+    priceMax: filters.priceMax,
+    volumeProfile: filters.volumeProfile,
+    signals: filters.signals,
+    trend: filters.trend,
+    equilibriumZone: filters.equilibriumZone,
+    
+    // Pagination and sorting
     sortField,
     sortOrder: sortDirection,
     page,

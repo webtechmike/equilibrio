@@ -56,8 +56,22 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 	// Generate mock data (replace with real API calls)
 	stocks := s.generateMockStockData()
 
+	// Create filter from request
+	filter := models.StockFilter{
+		SearchTerm:      req.SearchTerm,
+		Sectors:         req.Sectors,
+		RSIMin:          req.RSIMin,
+		RSIMax:          req.RSIMax,
+		PriceMin:        req.PriceMin,
+		PriceMax:        req.PriceMax,
+		VolumeProfile:   req.VolumeProfile,
+		Signals:         req.Signals,
+		Trend:           req.Trend,
+		EquilibriumZone: req.EquilibriumZone,
+	}
+
 	// Apply filters
-	filteredStocks := s.applyFilters(stocks, req.Filter)
+	filteredStocks := s.applyFilters(stocks, filter)
 
 	// Apply sorting
 	sortedStocks := s.applySorting(filteredStocks, req.SortField, req.SortOrder)
@@ -194,12 +208,26 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 			trend = "bearish"
 		}
 
-		// Determine signal based on RSI and equilibrium
+		// Determine signal based on RSI and equilibrium (more varied)
 		var signal string = "hold"
-		if rsi < 40 && priceToEquilibrium < -10 {
-			signal = "buy"
-		} else if rsi > 70 && priceToEquilibrium > 10 {
-			signal = "sell"
+		if rsi < 30 {
+			signal = "buy" // Oversold
+		} else if rsi > 70 {
+			signal = "sell" // Overbought
+		} else if priceToEquilibrium < -15 {
+			signal = "buy" // Strong discount
+		} else if priceToEquilibrium > 15 {
+			signal = "sell" // Strong premium
+		} else {
+			// Random distribution for more variety
+			randSignal := rand.Float64()
+			if randSignal < 0.2 {
+				signal = "buy"
+			} else if randSignal < 0.4 {
+				signal = "sell"
+			} else {
+				signal = "hold"
+			}
 		}
 
 		// Volume profile based on volume
@@ -425,12 +453,21 @@ func (s *MarketDataService) applySorting(stocks []models.StockData, sortField, s
 // generateCacheKey creates a cache key from the request
 func (s *MarketDataService) generateCacheKey(req models.StockListRequest) string {
 	// Create a hash of the request parameters for caching
-	key := fmt.Sprintf("%s_%s_%d_%d_%s",
+	key := fmt.Sprintf("%s_%s_%d_%d_%s_%.1f_%.1f_%.1f_%.1f_%s_%s_%s_%s_%s",
 		req.SortField,
 		req.SortOrder,
 		req.Page,
 		req.PageSize,
-		req.Filter.SearchTerm,
+		req.SearchTerm,
+		req.RSIMin,
+		req.RSIMax,
+		req.PriceMin,
+		req.PriceMax,
+		strings.Join(req.Sectors, ","),
+		strings.Join(req.Signals, ","),
+		strings.Join(req.Trend, ","),
+		strings.Join(req.VolumeProfile, ","),
+		strings.Join(req.EquilibriumZone, ","),
 	)
 	return key
 }

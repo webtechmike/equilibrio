@@ -50,11 +50,23 @@ type StockFilter struct {
 
 // StockListRequest represents the request for stock data
 type StockListRequest struct {
-	Filter    StockFilter `json:"filter"`
-	SortField string      `json:"sortField"`
-	SortOrder string      `json:"sortOrder"` // "asc" or "desc"
-	Page      int         `json:"page"`
-	PageSize  int         `json:"pageSize"`
+	// Filter fields (flattened for query parameter binding)
+	SearchTerm      string   `form:"searchTerm" json:"searchTerm"`
+	Sectors         []string `form:"sectors" json:"sectors"`
+	RSIMin          float64  `form:"rsiMin" json:"rsiMin"`
+	RSIMax          float64  `form:"rsiMax" json:"rsiMax"`
+	PriceMin        float64  `form:"priceMin" json:"priceMin"`
+	PriceMax        float64  `form:"priceMax" json:"priceMax"`
+	VolumeProfile   []string `form:"volumeProfile" json:"volumeProfile"`
+	Signals         []string `form:"signals" json:"signals"`
+	Trend           []string `form:"trend" json:"trend"`
+	EquilibriumZone []string `form:"equilibriumZone" json:"equilibriumZone"`
+
+	// Pagination and sorting
+	SortField string `form:"sortField" json:"sortField"`
+	SortOrder string `form:"sortOrder" json:"sortOrder"` // "asc" or "desc"
+	Page      int    `form:"page" json:"page"`
+	PageSize  int    `form:"pageSize" json:"pageSize"`
 }
 
 // StockListResponse represents the response for stock data

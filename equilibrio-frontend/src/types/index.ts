@@ -42,7 +42,19 @@ export interface StockFilter {
 }
 
 export interface StockListRequest {
-  filter: StockFilter;
+  // Filter fields (flattened to match backend)
+  searchTerm: string;
+  sectors: string[];
+  rsiMin: number;
+  rsiMax: number;
+  priceMin: number;
+  priceMax: number;
+  volumeProfile: string[];
+  signals: string[];
+  trend: string[];
+  equilibriumZone: string[];
+  
+  // Pagination and sorting
   sortField: string;
   sortOrder: 'asc' | 'desc';
   page: number;
