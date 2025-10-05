@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import StockHeader from './components/StockHeader';
 import StockFilters from './components/StockFilters';
@@ -28,7 +28,7 @@ const App: React.FC = () => {
   const { filters, updateFilter, resetFilters } = useStockFilters();
   const { data: sectors = [] } = useSectors();
 
-  const request: StockListRequest = {
+  const request: StockListRequest = useMemo(() => ({
     // Flattened filter fields
     searchTerm: filters.searchTerm,
     sectors: filters.sectors,
@@ -46,7 +46,7 @@ const App: React.FC = () => {
     sortOrder: sortDirection,
     page,
     pageSize,
-  };
+  }), [filters, sortField, sortDirection, page, pageSize]);
 
   const { data: stocksData, isLoading, error, refreshData } = useStocks(request);
 

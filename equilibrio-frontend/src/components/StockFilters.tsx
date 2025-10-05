@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Filter } from 'lucide-react';
 import { StockFilter } from '../types';
+import FilterButton from './ui/FilterButton';
+import {
+  EQUILIBRIUM_ZONES,
+  SIGNALS,
+  VOLUME_PROFILES,
+  TRENDS,
+} from '../constants/filterOptions';
 
 interface StockFiltersProps {
   filters: StockFilter;
@@ -15,20 +22,13 @@ const StockFilters: React.FC<StockFiltersProps> = ({
   onFilterChange,
   onResetFilters,
 }) => {
-  const handleSectorToggle = (sector: string) => {
-    const newSectors = filters.sectors.includes(sector)
-      ? filters.sectors.filter(s => s !== sector)
-      : [...filters.sectors, sector];
-    onFilterChange('sectors', newSectors);
-  };
-
-  const handleArrayToggle = (key: keyof StockFilter, value: string) => {
+  const handleArrayToggle = useCallback((key: keyof StockFilter, value: string) => {
     const currentArray = filters[key] as string[];
     const newArray = currentArray.includes(value)
       ? currentArray.filter(item => item !== value)
       : [...currentArray, value];
     onFilterChange(key, newArray);
-  };
+  }, [filters, onFilterChange]);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -100,7 +100,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
             Equilibrium Zone
           </label>
           <div className="flex flex-col gap-1">
-            {['discount', 'equilibrium', 'premium'].map(zone => (
+            {EQUILIBRIUM_ZONES.map(zone => (
               <label key={zone} className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -120,7 +120,7 @@ const StockFilters: React.FC<StockFiltersProps> = ({
             Signal
           </label>
           <div className="flex flex-col gap-1">
-            {['buy', 'hold', 'sell'].map(sig => (
+            {SIGNALS.map(sig => (
               <label key={sig} className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -143,18 +143,13 @@ const StockFilters: React.FC<StockFiltersProps> = ({
             Volume Profile
           </label>
           <div className="flex gap-2">
-            {['high', 'medium', 'low'].map(profile => (
-              <button
+            {VOLUME_PROFILES.map(profile => (
+              <FilterButton
                 key={profile}
+                label={profile}
+                active={filters.volumeProfile.includes(profile)}
                 onClick={() => handleArrayToggle('volumeProfile', profile)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                  filters.volumeProfile.includes(profile)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                }`}
-              >
-                {profile}
-              </button>
+              />
             ))}
           </div>
         </div>
@@ -165,18 +160,13 @@ const StockFilters: React.FC<StockFiltersProps> = ({
             Trend
           </label>
           <div className="flex gap-2">
-            {['bullish', 'neutral', 'bearish'].map(trend => (
-              <button
+            {TRENDS.map(trend => (
+              <FilterButton
                 key={trend}
+                label={trend}
+                active={filters.trend.includes(trend)}
                 onClick={() => handleArrayToggle('trend', trend)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                  filters.trend.includes(trend)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                }`}
-              >
-                {trend}
-              </button>
+              />
             ))}
           </div>
         </div>
@@ -189,17 +179,12 @@ const StockFilters: React.FC<StockFiltersProps> = ({
         </label>
         <div className="flex flex-wrap gap-2">
           {sectors.map(sector => (
-            <button
+            <FilterButton
               key={sector}
-              onClick={() => handleSectorToggle(sector)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                filters.sectors.includes(sector)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-              }`}
-            >
-              {sector}
-            </button>
+              label={sector}
+              active={filters.sectors.includes(sector)}
+              onClick={() => handleArrayToggle('sectors', sector)}
+            />
           ))}
         </div>
       </div>
@@ -207,4 +192,4 @@ const StockFilters: React.FC<StockFiltersProps> = ({
   );
 };
 
-export default StockFilters;
+export default React.memo(StockFilters);
