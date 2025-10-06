@@ -77,7 +77,7 @@ func (p *YahooHTTPProvider) GetQuote(ctx context.Context, symbol string) (*model
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
-	
+
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch quote: %w", err)
@@ -129,7 +129,7 @@ func (p *YahooHTTPProvider) GetHistoricalPrices(ctx context.Context, symbol stri
 	end := time.Now().Unix()
 	start := time.Now().AddDate(0, 0, -days).Unix()
 
-	url := fmt.Sprintf("%s/chart/%s?period1=%d&period2=%d&interval=1d", 
+	url := fmt.Sprintf("%s/chart/%s?period1=%d&period2=%d&interval=1d",
 		p.baseURL, symbol, start, end)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -174,7 +174,7 @@ func (p *YahooHTTPProvider) GetHistoricalPrices(ctx context.Context, symbol stri
 	var candles []models.CandlestickData
 	for i := range timestamps {
 		date := time.Unix(timestamps[i], 0).Format("2006-01-02")
-		
+
 		candles = append(candles, models.CandlestickData{
 			Time:  date,
 			Open:  p.round(quote.Open[i]),
@@ -322,4 +322,3 @@ func (p *YahooHTTPProvider) calculateMACD(candles []models.CandlestickData) (flo
 
 	return p.round(macd), p.round(signal), p.round(histogram)
 }
-

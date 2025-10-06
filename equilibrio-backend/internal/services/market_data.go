@@ -38,7 +38,7 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 	return &MarketDataService{
 		config:        cfg,
 		cache:         rdb,
-		yahooProvider: NewYahooHTTPProvider(), // Use HTTP provider
+		yahooProvider: NewYahooHTTPProvider(),       // Use HTTP provider
 		indicators:    NewEquilibriumCalculator(20), // 20-day lookback
 	}
 }
@@ -61,9 +61,9 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 	// Get stock data (real or mock based on config)
 	var stocks []models.StockData
 	var err2 error
-	
+
 	fmt.Printf("USE_MOCK_DATA config: %v\n", s.config.UseMockData)
-	
+
 	if s.config.UseMockData {
 		fmt.Println("Using MOCK data")
 		stocks = s.generateMockStockData()

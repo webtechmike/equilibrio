@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import StockHeader from './components/StockHeader';
@@ -29,6 +29,9 @@ const App: React.FC = () => {
   const [pageSize] = useState(50);
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
+
+  // Ref for scrolling to price card
+  const priceCardRef = useRef<HTMLDivElement>(null);
 
   const { filters, updateFilter, resetFilters, loadFilters } = useStockFilters();
   const { data: sectors = [] } = useSectors();
@@ -103,6 +106,20 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Scroll to price card when stock is selected
+  useEffect(() => {
+    if (selectedStock && priceCardRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        priceCardRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }, 100);
+    }
+  }, [selectedStock]);
+
   const handleTimeframeChange = useCallback(async (days: number) => {
     if (!selectedStock) return;
     try {
@@ -161,11 +178,13 @@ const App: React.FC = () => {
           onResetFilters={resetFilters}
         />
 
-        {/* Price Summary Card - Prominent Display */}
-        <StockPriceCard 
-          stock={selectedStock} 
-          onClose={handleClosePriceCard}
-        />
+        {/* Price Summary Card - Prominent Display with scroll target */}
+        <div ref={priceCardRef}>
+          <StockPriceCard 
+            stock={selectedStock} 
+            onClose={handleClosePriceCard}
+          />
+        </div>
 
         {selectedStock && chartData.length > 0 && (
           <CandlestickChart
