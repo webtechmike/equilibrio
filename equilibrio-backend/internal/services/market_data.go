@@ -17,10 +17,10 @@ import (
 )
 
 type MarketDataService struct {
-	config         *config.Config
-	cache          *redis.Client
-	yahooProvider  *YahooFinanceProvider
-	indicators     *EquilibriumCalculator
+	config        *config.Config
+	cache         *redis.Client
+	yahooProvider *YahooHTTPProvider
+	indicators    *EquilibriumCalculator
 }
 
 func NewMarketDataService(cfg *config.Config) *MarketDataService {
@@ -36,10 +36,10 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 	rdb := redis.NewClient(opt)
 
 	return &MarketDataService{
-		config:         cfg,
-		cache:          rdb,
-		yahooProvider:  NewYahooFinanceProvider(),
-		indicators:     NewEquilibriumCalculator(20), // 20-day lookback
+		config:        cfg,
+		cache:         rdb,
+		yahooProvider: NewYahooHTTPProvider(), // Use HTTP provider
+		indicators:    NewEquilibriumCalculator(20), // 20-day lookback
 	}
 }
 
@@ -62,14 +62,20 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 	var stocks []models.StockData
 	var err2 error
 	
+	fmt.Printf("USE_MOCK_DATA config: %v\n", s.config.UseMockData)
+	
 	if s.config.UseMockData {
+		fmt.Println("Using MOCK data")
 		stocks = s.generateMockStockData()
 	} else {
+		fmt.Println("Fetching REAL data from Yahoo Finance...")
 		stocks, err2 = s.getRealStockData()
 		if err2 != nil {
 			// Fallback to mock data if real data fails
 			fmt.Printf("Failed to fetch real data, using mock: %v\n", err2)
 			stocks = s.generateMockStockData()
+		} else {
+			fmt.Printf("Successfully fetched %d real stocks\n", len(stocks))
 		}
 	}
 

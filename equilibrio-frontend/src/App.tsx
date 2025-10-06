@@ -5,6 +5,7 @@ import StockHeader from './components/StockHeader';
 import StockFilters from './components/StockFilters';
 import StockTable from './components/StockTable';
 import CandlestickChart from './components/CandlestickChart';
+import StockPriceCard from './components/StockPriceCard';
 import EquilibriumInfo from './components/EquilibriumInfo';
 import { useStocks, useSectors, useStockFilters } from './hooks/useStocks';
 import { ApiService } from './services/api';
@@ -118,6 +119,10 @@ const App: React.FC = () => {
     setChartData([]);
   }, []);
 
+  const handleClosePriceCard = useCallback(() => {
+    setSelectedStock(null);
+  }, []);
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6 transition-colors">
@@ -156,7 +161,13 @@ const App: React.FC = () => {
           onResetFilters={resetFilters}
         />
 
-        {selectedStock && (
+        {/* Price Summary Card - Prominent Display */}
+        <StockPriceCard 
+          stock={selectedStock} 
+          onClose={handleClosePriceCard}
+        />
+
+        {selectedStock && chartData.length > 0 && (
           <CandlestickChart
             symbol={selectedStock.symbol}
             companyName={selectedStock.name}

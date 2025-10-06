@@ -74,7 +74,7 @@ func (p *YahooFinanceProvider) GetHistoricalPrices(ctx context.Context, symbol s
 	var candles []models.CandlestickData
 	for iter.Next() {
 		bar := iter.Bar()
-		
+
 		// Convert timestamp to date string
 		date := time.Unix(int64(bar.Timestamp), 0).Format("2006-01-02")
 
@@ -138,10 +138,10 @@ func (p *YahooFinanceProvider) round(value float64) float64 {
 func (p *YahooFinanceProvider) getSectorName(quoteType string) string {
 	// This is a simple mapping - could be enhanced
 	sectorMap := map[string]string{
-		"EQUITY":      "Technology",
-		"ETF":         "ETF",
-		"MUTUALFUND":  "Mutual Fund",
-		"INDEX":       "Index",
+		"EQUITY":     "Technology",
+		"ETF":        "ETF",
+		"MUTUALFUND": "Mutual Fund",
+		"INDEX":      "Index",
 	}
 
 	if sector, ok := sectorMap[quoteType]; ok {
@@ -202,7 +202,7 @@ func (p *YahooFinanceProvider) CalculateTechnicalIndicators(candles []models.Can
 
 	return models.TechnicalIndicators{
 		RSI:            rsi,
-		StochRSI:       0, // TODO: Implement
+		StochRSI:       0,   // TODO: Implement
 		HistoricRSIAvg: rsi, // Simplified
 		SMA50:          sma50,
 		SMA200:         sma200,
@@ -291,4 +291,3 @@ func (p *YahooFinanceProvider) calculateMACD(candles []models.CandlestickData) (
 
 	return p.round(macd), p.round(signal), p.round(histogram)
 }
-
