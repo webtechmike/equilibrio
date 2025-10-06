@@ -6,6 +6,7 @@ import StockFilters from './components/StockFilters';
 import StockTable from './components/StockTable';
 import CandlestickChart from './components/CandlestickChart';
 import StockPriceCard from './components/StockPriceCard';
+import SymbolSearch from './components/SymbolSearch';
 import EquilibriumInfo from './components/EquilibriumInfo';
 import { useStocks, useSectors, useStockFilters } from './hooks/useStocks';
 import { ApiService } from './services/api';
@@ -140,6 +141,18 @@ const App: React.FC = () => {
     setSelectedStock(null);
   }, []);
 
+  const handleStockSearchFound = useCallback(async (stock: StockData) => {
+    // When a stock is found via search, display it immediately
+    setSelectedStock(stock);
+    try {
+      const data = await ApiService.getStockChart(stock.symbol, 90);
+      setChartData(data);
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+      setChartData([]);
+    }
+  }, []);
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6 transition-colors">
@@ -177,6 +190,9 @@ const App: React.FC = () => {
           onFilterChange={updateFilter}
           onResetFilters={resetFilters}
         />
+
+        {/* Symbol Search - Find any ticker */}
+        <SymbolSearch onStockFound={handleStockSearchFound} />
 
         {/* Price Summary Card - Prominent Display with scroll target */}
         <div ref={priceCardRef}>

@@ -46,14 +46,14 @@ func (m *MarketCacheStrategy) getEasternTime() time.Time {
 		// Note: This doesn't handle DST, but works for most cases
 		loc = time.FixedZone("EST", -5*60*60)
 	}
-	
+
 	return time.Now().In(loc)
 }
 
 // IsMarketOpen checks if the US stock market is currently open
 func (m *MarketCacheStrategy) IsMarketOpen() bool {
 	now := m.getEasternTime()
-	
+
 	// Check if it's a weekday (Monday = 1, Sunday = 0)
 	if now.Weekday() == time.Saturday || now.Weekday() == time.Sunday {
 		return false
@@ -62,12 +62,12 @@ func (m *MarketCacheStrategy) IsMarketOpen() bool {
 	// Check if within market hours (9:30 AM - 4:00 PM ET)
 	hour := now.Hour()
 	minute := now.Minute()
-	
+
 	// Market opens at 9:30 AM
 	if hour < 9 || (hour == 9 && minute < 30) {
 		return false
 	}
-	
+
 	// Market closes at 4:00 PM
 	if hour >= 16 {
 		return false

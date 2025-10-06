@@ -171,6 +171,129 @@ func (s *MarketDataService) GetStock(symbol string) (*models.StockData, error) {
 	return nil, fmt.Errorf("stock not found: %s", symbol)
 }
 
+// SearchStock searches for any ticker symbol and fetches from Yahoo Finance
+func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error) {
+	ctx := context.Background()
+	symbol = strings.ToUpper(strings.TrimSpace(symbol))
+	
+	// Check cache first
+	cacheKey := fmt.Sprintf("stock:%s", symbol)
+	cached, err := s.cache.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var stock models.StockData
+		if json.Unmarshal([]byte(cached), &stock) == nil {
+			fmt.Printf("Cache hit for symbol: %s\n", symbol)
+			return &stock, nil
+		}
+	}
+	
+	fmt.Printf("Searching for symbol: %s\n", symbol)
+	
+	// If using mock data, check if symbol exists in mock list
+	if s.config.UseMockData {
+		stocks := s.generateMockStockData()
+		for _, stock := range stocks {
+			if stock.Symbol == symbol {
+				// Cache the result with market-aware TTL
+				if data, err := json.Marshal(stock); err == nil {
+					ttl := s.cacheStrategy.GetCacheTTL()
+					s.cache.Set(ctx, cacheKey, data, ttl)
+				}
+				return &stock, nil
+			}
+		}
+		return nil, fmt.Errorf("symbol not found in mock data: %s", symbol)
+	}
+	
+	// Fetch from Yahoo Finance
+	quote, err := s.yahooProvider.GetQuote(ctx, symbol)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch symbol %s: %w", symbol, err)
+	}
+	
+	// Fetch historical data for indicators (90 days)
+	historical, err := s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
+	if err != nil || len(historical) == 0 {
+		return nil, fmt.Errorf("failed to fetch historical data for %s: %w", symbol, err)
+	}
+	
+	// Calculate technical indicators
+	indicators := s.yahooProvider.CalculateTechnicalIndicators(historical)
+	
+	// Calculate equilibrium
+	equilibrium := s.indicators.CalculateEquilibrium(historical, quote.Price)
+	
+	// Determine trend based on moving averages
+	trend := "neutral"
+	if quote.Price > indicators.SMA50 && indicators.SMA50 > indicators.SMA200 {
+		trend = "bullish"
+	} else if quote.Price < indicators.SMA50 && indicators.SMA50 < indicators.SMA200 {
+		trend = "bearish"
+	}
+	
+	// Determine signal based on RSI and equilibrium
+	signal := "hold"
+	if indicators.RSI < 30 {
+		signal = "buy"
+	} else if indicators.RSI > 70 {
+		signal = "sell"
+	} else if equilibrium.Support > 0 {
+		priceToEquilibrium := ((quote.Price - equilibrium.Support) / equilibrium.Support) * 100
+		if priceToEquilibrium < -15 {
+			signal = "buy"
+		} else if priceToEquilibrium > 15 {
+			signal = "sell"
+		}
+	}
+	
+	// Volume profile
+	volumeProfile := "medium"
+	if quote.Volume > 50000000 {
+		volumeProfile = "high"
+	} else if quote.Volume < 10000000 {
+		volumeProfile = "low"
+	}
+	
+	// Create stock data
+	stock := models.StockData{
+		Symbol:                 quote.Symbol,
+		Name:                   quote.Name,
+		Price:                  quote.Price,
+		Change:                 quote.Change,
+		ChangePercent:          quote.ChangePercent,
+		Volume:                 quote.Volume,
+		Sector:                 quote.Sector,
+		Industry:               quote.Industry,
+		MarketCap:              float64(quote.MarketCap),
+		RSI:                    indicators.RSI,
+		StochRSI:               indicators.StochRSI,
+		HistoricRSIAvg:         indicators.HistoricRSIAvg,
+		SMA50:                  indicators.SMA50,
+		SMA200:                 indicators.SMA200,
+		EMA20:                  indicators.EMA20,
+		MACD:                   indicators.MACD,
+		MACDSignal:             indicators.MACDSignal,
+		MACDHistogram:          indicators.MACDHistogram,
+		EquilibriumLevel:       (equilibrium.Support + equilibrium.Resistance) / 2,
+		PriceToEquilibrium:     ((quote.Price - equilibrium.Support) / equilibrium.Support) * 100,
+		Trend:                  trend,
+		Signal:                 signal,
+		VolumeProfile:          volumeProfile,
+		DistanceFrom52WeekHigh: ((quote.Price - quote.Week52High) / quote.Week52High) * 100,
+		DistanceFrom52WeekLow:  ((quote.Price - quote.Week52Low) / quote.Week52Low) * 100,
+		LastUpdated:            time.Now(),
+	}
+	
+	// Cache the result with market-aware TTL
+	if data, err := json.Marshal(stock); err == nil {
+		ttl := s.cacheStrategy.GetCacheTTL()
+		s.cache.Set(ctx, cacheKey, data, ttl)
+		fmt.Printf("Cached %s for %v\n", symbol, ttl)
+	}
+	
+	return &stock, nil
+}
+
 // GetSectors returns all available sectors
 func (s *MarketDataService) GetSectors() ([]string, error) {
 	sectors := []string{

@@ -144,6 +144,25 @@ func (h *Handlers) GetStockChart(c *gin.Context) {
 	c.JSON(http.StatusOK, chartData)
 }
 
+// SearchStock handles GET /api/stocks/search/:query
+// Searches for any ticker symbol and fetches live data from Yahoo Finance
+func (h *Handlers) SearchStock(c *gin.Context) {
+	query := strings.ToUpper(strings.TrimSpace(c.Param("query")))
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Search query is required"})
+		return
+	}
+
+	// Search for the stock (will fetch from Yahoo Finance if not in cache)
+	stock, err := h.marketDataService.SearchStock(query)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stock not found", "query": query})
+		return
+	}
+
+	c.JSON(http.StatusOK, stock)
+}
+
 // GetSectors handles GET /api/sectors
 func (h *Handlers) GetSectors(c *gin.Context) {
 	sectors, err := h.marketDataService.GetSectors()

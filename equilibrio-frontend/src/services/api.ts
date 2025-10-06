@@ -92,6 +92,12 @@ export class ApiService {
     return response.data.data;
   }
 
+  // Search for any ticker symbol (fetches live data)
+  static async searchStock(query: string): Promise<StockData> {
+    const response: AxiosResponse<StockData> = await api.get(`/stocks/search/${query.toUpperCase()}`);
+    return response.data;
+  }
+
   // Get available sectors
   static async getSectors(): Promise<string[]> {
     const response: AxiosResponse<{ sectors: string[] }> = await api.get('/sectors');

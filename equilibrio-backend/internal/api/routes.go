@@ -30,6 +30,7 @@ func SetupRoutes(router *gin.Engine, handlers *Handlers) {
 		api.GET("/stocks", handlers.GetStocks)
 		api.GET("/stocks/:symbol", handlers.GetStock)
 		api.GET("/stocks/:symbol/chart", handlers.GetStockChart)
+		api.GET("/stocks/search/:query", handlers.SearchStock) // New: search any ticker
 		api.GET("/sectors", handlers.GetSectors)
 		api.GET("/export", handlers.ExportStocks)
 		api.POST("/refresh", handlers.RefreshData)
