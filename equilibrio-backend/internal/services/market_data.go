@@ -19,6 +19,7 @@ import (
 type MarketDataService struct {
 	config        *config.Config
 	cache         *redis.Client
+	cacheStrategy *MarketCacheStrategy
 	yahooProvider *YahooHTTPProvider
 	indicators    *EquilibriumCalculator
 }
@@ -38,6 +39,7 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 	return &MarketDataService{
 		config:        cfg,
 		cache:         rdb,
+		cacheStrategy: NewMarketCacheStrategy(rdb),
 		yahooProvider: NewYahooHTTPProvider(),       // Use HTTP provider
 		indicators:    NewEquilibriumCalculator(20), // 20-day lookback
 	}
@@ -45,37 +47,48 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 
 // GetStocks retrieves and filters stocks based on the request
 func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.StockData, int, error) {
-	// Try to get from cache first
-	cacheKey := fmt.Sprintf("stocks:%s", s.generateCacheKey(req))
-	cached, err := s.cache.Get(context.Background(), cacheKey).Result()
-	if err == nil {
-		var cachedData struct {
-			Stocks []models.StockData `json:"stocks"`
-			Total  int                `json:"total"`
-		}
-		if json.Unmarshal([]byte(cached), &cachedData) == nil {
-			return cachedData.Stocks, cachedData.Total, nil
-		}
-	}
-
-	// Get stock data (real or mock based on config)
+	ctx := context.Background()
+	
+	// Log market status
+	marketStatus := s.cacheStrategy.GetMarketStatus()
+	cacheTTL := s.cacheStrategy.GetCacheTTL()
+	fmt.Printf("Market Status: %s | Cache TTL: %v\n", marketStatus, cacheTTL)
+	
+	// Try to get from daily snapshot first (if market is closed)
 	var stocks []models.StockData
 	var err2 error
-
-	fmt.Printf("USE_MOCK_DATA config: %v\n", s.config.UseMockData)
-
-	if s.config.UseMockData {
-		fmt.Println("Using MOCK data")
-		stocks = s.generateMockStockData()
-	} else {
-		fmt.Println("Fetching REAL data from Yahoo Finance...")
-		stocks, err2 = s.getRealStockData()
-		if err2 != nil {
-			// Fallback to mock data if real data fails
-			fmt.Printf("Failed to fetch real data, using mock: %v\n", err2)
+	
+	if !s.cacheStrategy.IsMarketOpen() {
+		// Market closed - try daily snapshot
+		snapshot, err := s.cacheStrategy.GetDailySnapshot(ctx)
+		if err == nil && len(snapshot) > 0 {
+			fmt.Println("Using daily snapshot (market closed)")
+			stocks = snapshot
+		}
+	}
+	
+	// If no snapshot or market is open, get fresh data
+	if len(stocks) == 0 {
+		fmt.Printf("USE_MOCK_DATA config: %v\n", s.config.UseMockData)
+		
+		if s.config.UseMockData {
+			fmt.Println("Using MOCK data")
 			stocks = s.generateMockStockData()
 		} else {
-			fmt.Printf("Successfully fetched %d real stocks\n", len(stocks))
+			fmt.Println("Fetching REAL data from Yahoo Finance...")
+			stocks, err2 = s.getRealStockData()
+			if err2 != nil {
+				// Fallback to mock data if real data fails
+				fmt.Printf("Failed to fetch real data, using mock: %v\n", err2)
+				stocks = s.generateMockStockData()
+			} else {
+				fmt.Printf("Successfully fetched %d real stocks\n", len(stocks))
+				
+				// Cache daily snapshot if market just closed or during trading hours
+				if err := s.cacheStrategy.CacheDailySnapshot(ctx, stocks); err == nil {
+					fmt.Println("Cached daily snapshot for reuse")
+				}
+			}
 		}
 	}
 
@@ -114,7 +127,7 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 
 	paginatedStocks := sortedStocks[start:end]
 
-	// Cache the result
+	// Cache the result with smart TTL based on market hours
 	cacheData := struct {
 		Stocks []models.StockData `json:"stocks"`
 		Total  int                `json:"total"`
@@ -123,8 +136,9 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 		Total:  total,
 	}
 
-	if data, err := json.Marshal(cacheData); err == nil {
-		s.cache.Set(context.Background(), cacheKey, data, 30*time.Second)
+	// Use market-aware caching
+	if err := s.cacheStrategy.CacheStockData(ctx, fmt.Sprintf("stocks:%s", s.generateCacheKey(req)), cacheData); err != nil {
+		fmt.Printf("Failed to cache results: %v\n", err)
 	}
 
 	return paginatedStocks, total, nil
