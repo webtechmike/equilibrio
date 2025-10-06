@@ -54,37 +54,23 @@ func generateMockStock(symbol string, index int) models.StockData {
 
 	volumeProfiles := []string{"low", "normal", "high", "extreme"}
 	trends := []string{"bullish", "bearish", "sideways"}
-	equilibriumZones := []string{"support", "resistance", "neutral"}
 
 	return models.StockData{
-		Symbol:              symbol,
-		Name:                "Company " + symbol,
-		Sector:              sectors[rand.Intn(len(sectors))],
-		Industry:            industries[rand.Intn(len(industries))],
-		Price:               math.Round(price*100) / 100,
-		Change:              math.Round(change*100) / 100,
-		ChangePercent:       math.Round(changePercent*100) / 100,
-		Volume:              int64(rand.Intn(10000000) + 1000000),
-		MarketCap:           int64(rand.Intn(1000000000000) + 1000000000),
-		PERatio:             math.Round((5+rand.Float64()*45)*100) / 100,
-		DividendYield:       math.Round(rand.Float64()*5*100) / 100,
-		Week52High:          math.Round((price*(1+rand.Float64()*0.3))*100) / 100,
-		Week52Low:           math.Round((price*(1-rand.Float64()*0.3))*100) / 100,
-		RSI:                 math.Round(rsi*100) / 100,
-		MACD:                math.Round((rand.Float64()-0.5)*10*100) / 100,
-		MovingAvg50:         math.Round((price*(1+(rand.Float64()-0.5)*0.1))*100) / 100,
-		MovingAvg200:        math.Round((price*(1+(rand.Float64()-0.5)*0.2))*100) / 100,
-		BollingerUpper:      math.Round((price*1.1)*100) / 100,
-		BollingerLower:      math.Round((price*0.9)*100) / 100,
-		ATR:                 math.Round(rand.Float64()*5*100) / 100,
-		Signal:              signal,
-		VolumeProfile:       volumeProfiles[rand.Intn(len(volumeProfiles))],
-		Trend:               trends[rand.Intn(len(trends))],
-		EquilibriumZone:     equilibriumZones[rand.Intn(len(equilibriumZones))],
-		EquilibriumStrength: math.Round((0.3+rand.Float64()*0.7)*100) / 100,
-		SupportLevel:        math.Round((price*0.95)*100) / 100,
-		ResistanceLevel:     math.Round((price*1.05)*100) / 100,
-		LastUpdated:         time.Now(),
+		Symbol:        symbol,
+		Name:          "Company " + symbol,
+		Sector:        sectors[rand.Intn(len(sectors))],
+		Industry:      industries[rand.Intn(len(industries))],
+		Price:         math.Round(price*100) / 100,
+		Change:        math.Round(change*100) / 100,
+		ChangePercent: math.Round(changePercent*100) / 100,
+		Volume:        int64(rand.Intn(10000000) + 1000000),
+		MarketCap:     float64(rand.Intn(1000000000)+1000000) * 1e3,
+		RSI:           math.Round(rsi*100) / 100,
+		MACD:          math.Round((rand.Float64()-0.5)*10*100) / 100,
+		Signal:        signal,
+		VolumeProfile: volumeProfiles[rand.Intn(len(volumeProfiles))],
+		Trend:         trends[rand.Intn(len(trends))],
+		LastUpdated:   time.Now(),
 	}
 }
 

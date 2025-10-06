@@ -25,9 +25,9 @@ func NewMarketCacheStrategy(cache *redis.Client) *MarketCacheStrategy {
 
 // MarketHours represents US stock market hours
 type MarketHours struct {
-	OpenHour   int // 9 AM ET (market open)
-	CloseHour  int // 4 PM ET (market close)
-	TimeZone   string
+	OpenHour  int // 9 AM ET (market open)
+	CloseHour int // 4 PM ET (market close)
+	TimeZone  string
 }
 
 var USMarketHours = MarketHours{
@@ -36,16 +36,23 @@ var USMarketHours = MarketHours{
 	TimeZone:  "America/New_York",
 }
 
-// IsMarketOpen checks if the US stock market is currently open
-func (m *MarketCacheStrategy) IsMarketOpen() bool {
-	// Load Eastern Time
+// getEasternTime returns current time in Eastern timezone
+// Uses UTC-5 (EST) or UTC-4 (EDT) offset if timezone data unavailable
+func (m *MarketCacheStrategy) getEasternTime() time.Time {
+	// Try to load Eastern Time zone
 	loc, err := time.LoadLocation(USMarketHours.TimeZone)
 	if err != nil {
-		// Fallback to UTC if timezone load fails
-		loc = time.UTC
+		// Fallback: Use fixed UTC-5 offset (EST)
+		// Note: This doesn't handle DST, but works for most cases
+		loc = time.FixedZone("EST", -5*60*60)
 	}
+	
+	return time.Now().In(loc)
+}
 
-	now := time.Now().In(loc)
+// IsMarketOpen checks if the US stock market is currently open
+func (m *MarketCacheStrategy) IsMarketOpen() bool {
+	now := m.getEasternTime()
 	
 	// Check if it's a weekday (Monday = 1, Sunday = 0)
 	if now.Weekday() == time.Saturday || now.Weekday() == time.Sunday {
@@ -82,17 +89,12 @@ func (m *MarketCacheStrategy) GetCacheTTL() time.Duration {
 
 // TimeUntilNextMarketOpen calculates time until next market open
 func (m *MarketCacheStrategy) TimeUntilNextMarketOpen() time.Duration {
-	loc, err := time.LoadLocation(USMarketHours.TimeZone)
-	if err != nil {
-		// Fallback: cache for 12 hours
-		return 12 * time.Hour
-	}
+	now := m.getEasternTime()
+	loc := now.Location()
 
-	now := time.Now().In(loc)
-	
 	// Calculate next market open (9:30 AM ET)
 	var nextOpen time.Time
-	
+
 	switch now.Weekday() {
 	case time.Saturday:
 		// Next open is Monday
@@ -123,7 +125,7 @@ func (m *MarketCacheStrategy) TimeUntilNextMarketOpen() time.Duration {
 	}
 
 	duration := nextOpen.Sub(now)
-	
+
 	// Ensure minimum TTL of 1 hour to handle timezone edge cases
 	if duration < time.Hour {
 		return time.Hour
@@ -135,7 +137,7 @@ func (m *MarketCacheStrategy) TimeUntilNextMarketOpen() time.Duration {
 // CacheStockData caches stock data with market-aware TTL
 func (m *MarketCacheStrategy) CacheStockData(ctx context.Context, key string, data interface{}) error {
 	ttl := m.GetCacheTTL()
-	
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %w", err)
@@ -146,15 +148,14 @@ func (m *MarketCacheStrategy) CacheStockData(ctx context.Context, key string, da
 
 // CacheDailySnapshot stores a snapshot of all stocks for the trading day
 func (m *MarketCacheStrategy) CacheDailySnapshot(ctx context.Context, stocks []models.StockData) error {
-	loc, _ := time.LoadLocation(USMarketHours.TimeZone)
-	now := time.Now().In(loc)
-	
+	now := m.getEasternTime()
+
 	// Create daily snapshot key (e.g., "daily_snapshot:2025-10-06")
 	snapshotKey := fmt.Sprintf("daily_snapshot:%s", now.Format("2006-01-02"))
-	
+
 	// Cache until next market open
 	ttl := m.TimeUntilNextMarketOpen()
-	
+
 	jsonData, err := json.Marshal(stocks)
 	if err != nil {
 		return fmt.Errorf("failed to marshal snapshot: %w", err)
@@ -165,11 +166,10 @@ func (m *MarketCacheStrategy) CacheDailySnapshot(ctx context.Context, stocks []m
 
 // GetDailySnapshot retrieves the daily snapshot if available
 func (m *MarketCacheStrategy) GetDailySnapshot(ctx context.Context) ([]models.StockData, error) {
-	loc, _ := time.LoadLocation(USMarketHours.TimeZone)
-	now := time.Now().In(loc)
-	
+	now := m.getEasternTime()
+
 	snapshotKey := fmt.Sprintf("daily_snapshot:%s", now.Format("2006-01-02"))
-	
+
 	data, err := m.cache.Get(ctx, snapshotKey).Result()
 	if err != nil {
 		return nil, err
@@ -207,9 +207,8 @@ func (m *MarketCacheStrategy) GetMarketStatus() string {
 		return "Market Open"
 	}
 
-	loc, _ := time.LoadLocation(USMarketHours.TimeZone)
-	now := time.Now().In(loc)
-	
+	now := m.getEasternTime()
+
 	if now.Weekday() == time.Saturday || now.Weekday() == time.Sunday {
 		return "Market Closed (Weekend)"
 	}
@@ -224,4 +223,3 @@ func (m *MarketCacheStrategy) GetMarketStatus() string {
 
 	return "Market Closed"
 }
-

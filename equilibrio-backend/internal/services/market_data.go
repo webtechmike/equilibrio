@@ -48,16 +48,16 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 // GetStocks retrieves and filters stocks based on the request
 func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.StockData, int, error) {
 	ctx := context.Background()
-	
+
 	// Log market status
 	marketStatus := s.cacheStrategy.GetMarketStatus()
 	cacheTTL := s.cacheStrategy.GetCacheTTL()
 	fmt.Printf("Market Status: %s | Cache TTL: %v\n", marketStatus, cacheTTL)
-	
+
 	// Try to get from daily snapshot first (if market is closed)
 	var stocks []models.StockData
 	var err2 error
-	
+
 	if !s.cacheStrategy.IsMarketOpen() {
 		// Market closed - try daily snapshot
 		snapshot, err := s.cacheStrategy.GetDailySnapshot(ctx)
@@ -66,11 +66,11 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 			stocks = snapshot
 		}
 	}
-	
+
 	// If no snapshot or market is open, get fresh data
 	if len(stocks) == 0 {
 		fmt.Printf("USE_MOCK_DATA config: %v\n", s.config.UseMockData)
-		
+
 		if s.config.UseMockData {
 			fmt.Println("Using MOCK data")
 			stocks = s.generateMockStockData()
@@ -83,7 +83,7 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 				stocks = s.generateMockStockData()
 			} else {
 				fmt.Printf("Successfully fetched %d real stocks\n", len(stocks))
-				
+
 				// Cache daily snapshot if market just closed or during trading hours
 				if err := s.cacheStrategy.CacheDailySnapshot(ctx, stocks); err == nil {
 					fmt.Println("Cached daily snapshot for reuse")
