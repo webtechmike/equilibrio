@@ -17,8 +17,10 @@ import (
 )
 
 type MarketDataService struct {
-	config *config.Config
-	cache  *redis.Client
+	config         *config.Config
+	cache          *redis.Client
+	yahooProvider  *YahooFinanceProvider
+	indicators     *EquilibriumCalculator
 }
 
 func NewMarketDataService(cfg *config.Config) *MarketDataService {
@@ -34,8 +36,10 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 	rdb := redis.NewClient(opt)
 
 	return &MarketDataService{
-		config: cfg,
-		cache:  rdb,
+		config:         cfg,
+		cache:          rdb,
+		yahooProvider:  NewYahooFinanceProvider(),
+		indicators:     NewEquilibriumCalculator(20), // 20-day lookback
 	}
 }
 
@@ -54,8 +58,20 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 		}
 	}
 
-	// Generate mock data (replace with real API calls)
-	stocks := s.generateMockStockData()
+	// Get stock data (real or mock based on config)
+	var stocks []models.StockData
+	var err2 error
+	
+	if s.config.UseMockData {
+		stocks = s.generateMockStockData()
+	} else {
+		stocks, err2 = s.getRealStockData()
+		if err2 != nil {
+			// Fallback to mock data if real data fails
+			fmt.Printf("Failed to fetch real data, using mock: %v\n", err2)
+			stocks = s.generateMockStockData()
+		}
+	}
 
 	// Create filter from request
 	filter := models.StockFilter{
@@ -152,14 +168,30 @@ func (s *MarketDataService) GetStockChart(symbol string) (*models.ChartDataRespo
 
 // GetStockChartWithDays returns candlestick chart data for a stock with specified days
 func (s *MarketDataService) GetStockChartWithDays(symbol string, days int) (*models.ChartDataResponse, error) {
-	// Get the stock to get its current price
-	stock, err := s.GetStock(symbol)
-	if err != nil {
-		return nil, err
-	}
+	var data []models.CandlestickData
+	var err error
 
-	// Generate mock candlestick data for specified days
-	data := s.generateMockChartData(stock.Price, days)
+	if s.config.UseMockData {
+		// Get the stock to get its current price
+		stock, err2 := s.GetStock(symbol)
+		if err2 != nil {
+			return nil, err2
+		}
+		// Generate mock candlestick data for specified days
+		data = s.generateMockChartData(stock.Price, days)
+	} else {
+		// Fetch real historical data from Yahoo Finance
+		data, err = s.yahooProvider.GetHistoricalPrices(context.Background(), symbol, days)
+		if err != nil {
+			// Fallback to mock data
+			fmt.Printf("Failed to fetch real chart data, using mock: %v\n", err)
+			stock, err2 := s.GetStock(symbol)
+			if err2 != nil {
+				return nil, err2
+			}
+			data = s.generateMockChartData(stock.Price, days)
+		}
+	}
 
 	response := &models.ChartDataResponse{
 		Symbol: symbol,
@@ -173,7 +205,7 @@ func (s *MarketDataService) GetStockChartWithDays(symbol string, days int) (*mod
 func (s *MarketDataService) generateMockChartData(currentPrice float64, days int) []models.CandlestickData {
 	data := make([]models.CandlestickData, days)
 	now := time.Now()
-	
+
 	// Use a consistent seed based on the current price to ensure repeatability
 	// This ensures the same stock always generates the same historical pattern
 	seed := int64(currentPrice * 1000)
@@ -182,7 +214,7 @@ func (s *MarketDataService) generateMockChartData(currentPrice float64, days int
 	// First pass: generate random walk backwards, then we'll normalize
 	prices := make([]float64, days+1)
 	prices[days] = currentPrice // End at current price
-	
+
 	// Work backwards from current price
 	for i := days - 1; i >= 0; i-- {
 		// Random daily change: +/- 2%
@@ -193,10 +225,10 @@ func (s *MarketDataService) generateMockChartData(currentPrice float64, days int
 	// Second pass: create candlesticks
 	for i := 0; i < days; i++ {
 		date := now.AddDate(0, 0, -(days - i - 1))
-		
+
 		open := prices[i]
 		close := prices[i+1]
-		
+
 		// High and low based on volatility
 		volatility := 0.015 // 1.5% intraday volatility
 		high := math.Max(open, close) * (1 + rng.Float64()*volatility)
@@ -258,7 +290,7 @@ func (s *MarketDataService) generateMockStockData() []models.StockData {
 		// Use consistent seed per symbol for repeatable data
 		symbolSeed := int64(len(ticker.symbol)*100 + i)
 		rng := rand.New(rand.NewSource(symbolSeed))
-		
+
 		basePrice := rng.Float64()*500 + 50
 		changePercent := (rng.Float64() - 0.5) * 10
 		rsi := rng.Float64() * 100
@@ -550,4 +582,108 @@ func (s *MarketDataService) generateCacheKey(req models.StockListRequest) string
 		strings.Join(req.EquilibriumZone, ","),
 	)
 	return key
+}
+
+// getRealStockData fetches real stock data from Yahoo Finance
+func (s *MarketDataService) getRealStockData() ([]models.StockData, error) {
+	// List of popular symbols to scan
+	symbols := []string{
+		"AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "BRK-B",
+		"JNJ", "JPM", "V", "PG", "MA", "HD", "BAC", "XOM",
+		"CVX", "ABBV", "KO", "PFE", "COST", "AVGO", "WMT", "DIS",
+	}
+
+	var stocks []models.StockData
+	ctx := context.Background()
+
+	for _, symbol := range symbols {
+		// Fetch quote
+		quote, err := s.yahooProvider.GetQuote(ctx, symbol)
+		if err != nil {
+			fmt.Printf("Failed to fetch %s: %v\n", symbol, err)
+			continue
+		}
+
+		// Fetch historical data for indicators (90 days)
+		historical, err := s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
+		if err != nil || len(historical) == 0 {
+			fmt.Printf("Failed to fetch historical data for %s: %v\n", symbol, err)
+			continue
+		}
+
+		// Calculate technical indicators
+		indicators := s.yahooProvider.CalculateTechnicalIndicators(historical)
+
+		// Calculate equilibrium
+		equilibrium := s.indicators.CalculateEquilibrium(historical, quote.Price)
+
+		// Determine trend based on moving averages
+		trend := "neutral"
+		if quote.Price > indicators.SMA50 && indicators.SMA50 > indicators.SMA200 {
+			trend = "bullish"
+		} else if quote.Price < indicators.SMA50 && indicators.SMA50 < indicators.SMA200 {
+			trend = "bearish"
+		}
+
+		// Determine signal based on RSI and equilibrium
+		signal := "hold"
+		if indicators.RSI < 30 {
+			signal = "buy"
+		} else if indicators.RSI > 70 {
+			signal = "sell"
+		} else if equilibrium.Support > 0 {
+			priceToEquilibrium := ((quote.Price - equilibrium.Support) / equilibrium.Support) * 100
+			if priceToEquilibrium < -15 {
+				signal = "buy"
+			} else if priceToEquilibrium > 15 {
+				signal = "sell"
+			}
+		}
+
+		// Volume profile
+		volumeProfile := "medium"
+		if quote.Volume > 50000000 {
+			volumeProfile = "high"
+		} else if quote.Volume < 10000000 {
+			volumeProfile = "low"
+		}
+
+		// Create stock data
+		stock := models.StockData{
+			Symbol:                 quote.Symbol,
+			Name:                   quote.Name,
+			Price:                  quote.Price,
+			Change:                 quote.Change,
+			ChangePercent:          quote.ChangePercent,
+			Volume:                 quote.Volume,
+			Sector:                 quote.Sector,
+			Industry:               quote.Industry,
+			MarketCap:              float64(quote.MarketCap),
+			RSI:                    indicators.RSI,
+			StochRSI:               indicators.StochRSI,
+			HistoricRSIAvg:         indicators.HistoricRSIAvg,
+			SMA50:                  indicators.SMA50,
+			SMA200:                 indicators.SMA200,
+			EMA20:                  indicators.EMA20,
+			MACD:                   indicators.MACD,
+			MACDSignal:             indicators.MACDSignal,
+			MACDHistogram:          indicators.MACDHistogram,
+			EquilibriumLevel:       (equilibrium.Support + equilibrium.Resistance) / 2,
+			PriceToEquilibrium:     ((quote.Price - equilibrium.Support) / equilibrium.Support) * 100,
+			Trend:                  trend,
+			Signal:                 signal,
+			VolumeProfile:          volumeProfile,
+			DistanceFrom52WeekHigh: ((quote.Price - quote.Week52High) / quote.Week52High) * 100,
+			DistanceFrom52WeekLow:  ((quote.Price - quote.Week52Low) / quote.Week52Low) * 100,
+			LastUpdated:            time.Now(),
+		}
+
+		stocks = append(stocks, stock)
+	}
+
+	if len(stocks) == 0 {
+		return nil, fmt.Errorf("no stock data retrieved")
+	}
+
+	return stocks, nil
 }
