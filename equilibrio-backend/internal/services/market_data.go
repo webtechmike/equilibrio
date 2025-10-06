@@ -175,7 +175,7 @@ func (s *MarketDataService) GetStock(symbol string) (*models.StockData, error) {
 func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error) {
 	ctx := context.Background()
 	symbol = strings.ToUpper(strings.TrimSpace(symbol))
-	
+
 	// Check cache first
 	cacheKey := fmt.Sprintf("stock:%s", symbol)
 	cached, err := s.cache.Get(ctx, cacheKey).Result()
@@ -186,9 +186,9 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 			return &stock, nil
 		}
 	}
-	
+
 	fmt.Printf("Searching for symbol: %s\n", symbol)
-	
+
 	// If using mock data, check if symbol exists in mock list
 	if s.config.UseMockData {
 		stocks := s.generateMockStockData()
@@ -204,25 +204,25 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 		}
 		return nil, fmt.Errorf("symbol not found in mock data: %s", symbol)
 	}
-	
+
 	// Fetch from Yahoo Finance
 	quote, err := s.yahooProvider.GetQuote(ctx, symbol)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch symbol %s: %w", symbol, err)
 	}
-	
+
 	// Fetch historical data for indicators (90 days)
 	historical, err := s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
 	if err != nil || len(historical) == 0 {
 		return nil, fmt.Errorf("failed to fetch historical data for %s: %w", symbol, err)
 	}
-	
+
 	// Calculate technical indicators
 	indicators := s.yahooProvider.CalculateTechnicalIndicators(historical)
-	
+
 	// Calculate equilibrium
 	equilibrium := s.indicators.CalculateEquilibrium(historical, quote.Price)
-	
+
 	// Determine trend based on moving averages
 	trend := "neutral"
 	if quote.Price > indicators.SMA50 && indicators.SMA50 > indicators.SMA200 {
@@ -230,7 +230,7 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 	} else if quote.Price < indicators.SMA50 && indicators.SMA50 < indicators.SMA200 {
 		trend = "bearish"
 	}
-	
+
 	// Determine signal based on RSI and equilibrium
 	signal := "hold"
 	if indicators.RSI < 30 {
@@ -245,7 +245,7 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 			signal = "sell"
 		}
 	}
-	
+
 	// Volume profile
 	volumeProfile := "medium"
 	if quote.Volume > 50000000 {
@@ -253,7 +253,7 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 	} else if quote.Volume < 10000000 {
 		volumeProfile = "low"
 	}
-	
+
 	// Create stock data
 	stock := models.StockData{
 		Symbol:                 quote.Symbol,
@@ -283,14 +283,14 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 		DistanceFrom52WeekLow:  ((quote.Price - quote.Week52Low) / quote.Week52Low) * 100,
 		LastUpdated:            time.Now(),
 	}
-	
+
 	// Cache the result with market-aware TTL
 	if data, err := json.Marshal(stock); err == nil {
 		ttl := s.cacheStrategy.GetCacheTTL()
 		s.cache.Set(ctx, cacheKey, data, ttl)
 		fmt.Printf("Cached %s for %v\n", symbol, ttl)
 	}
-	
+
 	return &stock, nil
 }
 
