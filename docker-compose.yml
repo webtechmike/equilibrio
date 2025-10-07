@@ -24,7 +24,7 @@ services:
       - ENVIRONMENT=production
       - REDIS_URL=redis://redis:6379
       - CORS_ORIGIN=http://localhost:3000
-      - USE_MOCK_DATA=false
+      - USE_MOCK_DATA=true
       - CACHE_TTL_SECONDS=300
     depends_on:
       - redis

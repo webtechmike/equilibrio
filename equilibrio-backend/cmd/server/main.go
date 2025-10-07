@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"equilibrio-backend/internal/api"
 	"equilibrio-backend/internal/config"
@@ -48,6 +49,26 @@ func main() {
 
 	// API routes
 	api.SetupRoutes(router, handlers)
+
+	// Lightweight daily cron to refresh snapshot at market close
+	// In production you'd typically use a proper scheduler, but this demonstrates the concept.
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// Run shortly after market close ~ 4:05 PM ET equivalent (we approximate via cacheStrategy)
+			status := marketDataService.MarketStatus()
+			if status == "Market Closed (After Hours)" {
+				// Attempt to refresh once per after-hours period; the snapshot CacheDailySnapshot TTL prevents overwork
+				if _, err := marketDataService.RefreshDailySnapshot(nil); err != nil {
+					log.Printf("snapshot refresh skipped/failed: %v", err)
+				} else {
+					log.Printf("snapshot refresh completed")
+				}
+			}
+		}
+	}()
 
 	// Start server
 	port := os.Getenv("PORT")

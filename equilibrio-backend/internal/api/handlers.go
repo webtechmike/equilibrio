@@ -144,6 +144,27 @@ func (h *Handlers) GetStockChart(c *gin.Context) {
 	c.JSON(http.StatusOK, chartData)
 }
 
+// RefreshSnapshot handles POST /api/snapshot/refresh
+// Triggers creation of today's daily snapshot (real data if available, else mock)
+func (h *Handlers) RefreshSnapshot(c *gin.Context) {
+	count, err := h.marketDataService.RefreshDailySnapshot(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "count": count})
+}
+
+// SnapshotStatus handles GET /api/snapshot/status
+// Returns whether today's snapshot exists and an approximate TTL until refresh
+func (h *Handlers) SnapshotStatus(c *gin.Context) {
+	has, ttl := h.marketDataService.HasTodaySnapshot(c.Request.Context())
+	c.JSON(http.StatusOK, gin.H{
+		"hasSnapshot": has,
+		"ttlSeconds":  int(ttl.Seconds()),
+	})
+}
+
 // SearchStock handles GET /api/stocks/search/:query
 // Searches for any ticker symbol and fetches live data from Yahoo Finance
 func (h *Handlers) SearchStock(c *gin.Context) {
