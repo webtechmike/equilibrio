@@ -4,7 +4,11 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Red Hat Display', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Red Hat Display', sans-serif;
   }
 }
 
@@ -23,5 +27,18 @@
   
   .card {
     @apply bg-white rounded-lg shadow-lg p-6;
+  }
+  
+  /* Font utility classes */
+  .font-heading {
+    font-family: 'Red Hat Display', sans-serif;
+  }
+  
+  .font-body {
+    font-family: 'Red Hat Display', sans-serif;
+  }
+  
+  .font-licorice {
+    font-family: 'Licorice', cursive;
   }
 }

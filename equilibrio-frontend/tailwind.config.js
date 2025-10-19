@@ -7,6 +7,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        'heading': ['Red Hat Display', 'sans-serif'],
+        'body': ['Licorice', 'cursive'],
+      },
       colors: {
         primary: {
           50: '#eff6ff',

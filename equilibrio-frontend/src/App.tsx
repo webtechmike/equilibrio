@@ -8,8 +8,10 @@ import CandlestickChart from './components/CandlestickChart';
 import StockPriceCard from './components/StockPriceCard';
 import EquilibriumInfo from './components/EquilibriumInfo';
 import { useStocks, useSectors, useStockFilters } from './hooks/useStocks';
+import { useFavorites } from './hooks/useFavorites';
 import { ApiService } from './services/api';
 import { StockListRequest, CandlestickData, StockData } from './types';
+import { mergeFavoritesWithStocks } from './utils/stockUtils';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -29,12 +31,14 @@ const App: React.FC = () => {
   const [pageSize] = useState(50);
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
+  const [manuallyAddedStocks, setManuallyAddedStocks] = useState<StockData[]>([]);
 
   // Ref for scrolling to price card
   const priceCardRef = useRef<HTMLDivElement>(null);
 
   const { filters, updateFilter, resetFilters, loadFilters } = useStockFilters();
   const { data: sectors = [] } = useSectors();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
   const request: StockListRequest = useMemo(() => ({
     // Flattened filter fields
@@ -57,6 +61,28 @@ const App: React.FC = () => {
   }), [filters, sortField, sortDirection, page, pageSize]);
 
   const { data: stocksData, isLoading, error, refreshData } = useStocks(request);
+
+  // Merge favorites with stocks data and manually added stocks
+  const mergedStocks = useMemo(() => {
+    const backendStocks = stocksData?.stocks || [];
+    const allStocks = [...manuallyAddedStocks, ...backendStocks];
+    
+    // Remove duplicates based on symbol (manually added stocks take precedence)
+    const uniqueStocks = allStocks.reduce((acc, stock) => {
+      const existingIndex = acc.findIndex(s => s.symbol.toUpperCase() === stock.symbol.toUpperCase());
+      if (existingIndex === -1) {
+        acc.push(stock);
+      } else {
+        // Replace with manually added stock if it exists
+        if (manuallyAddedStocks.some(ms => ms.symbol.toUpperCase() === stock.symbol.toUpperCase())) {
+          acc[existingIndex] = stock;
+        }
+      }
+      return acc;
+    }, [] as StockData[]);
+    
+    return mergeFavoritesWithStocks(uniqueStocks, favorites);
+  }, [stocksData?.stocks, favorites, manuallyAddedStocks]);
 
   const handleSort = useCallback((field: string) => {
     if (sortField === field) {
@@ -141,6 +167,15 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddStock = useCallback(async (stock: StockData) => {
+    // Add the stock to manually added stocks so it appears in the list
+    setManuallyAddedStocks(prev => {
+      const existingIndex = prev.findIndex(s => s.symbol.toUpperCase() === stock.symbol.toUpperCase());
+      if (existingIndex === -1) {
+        return [stock, ...prev]; // Add to the beginning
+      }
+      return prev; // Already exists
+    });
+    
     // When a new stock is added via search, display it immediately
     setSelectedStock(stock);
     try {
@@ -181,7 +216,7 @@ const App: React.FC = () => {
           onExport={handleExport}
           onLoadPreset={loadFilters}
           onAddStock={handleAddStock}
-          currentStocks={stocksData?.stocks || []}
+          currentStocks={mergedStocks}
           loading={isLoading}
         />
 
@@ -211,7 +246,7 @@ const App: React.FC = () => {
         )}
 
         <StockTable
-          stocks={stocksData?.stocks || []}
+          stocks={mergedStocks}
           loading={isLoading}
           sortField={sortField}
           sortDirection={sortDirection}
@@ -219,6 +254,8 @@ const App: React.FC = () => {
           onRowExpand={handleRowExpand}
           expandedRow={expandedRow}
           onStockClick={handleStockClick}
+          onToggleFavorite={toggleFavorite}
+          isFavorite={isFavorite}
         />
 
         <EquilibriumInfo />

@@ -322,3 +322,26 @@ func (p *YahooHTTPProvider) calculateMACD(candles []models.CandlestickData) (flo
 
 	return p.round(macd), p.round(signal), p.round(histogram)
 }
+
+// GetMarketSnapshot gets current market overview for multiple symbols
+func (p *YahooHTTPProvider) GetMarketSnapshot(ctx context.Context, symbols []string) (map[string]*models.Quote, error) {
+	snapshot := make(map[string]*models.Quote)
+
+	for _, symbol := range symbols {
+		quote, err := p.GetQuote(ctx, symbol)
+		if err != nil {
+			// Log error but continue with other symbols
+			continue
+		}
+		snapshot[symbol] = quote
+	}
+
+	return snapshot, nil
+}
+
+// SearchSymbols searches for symbols (basic implementation)
+func (p *YahooHTTPProvider) SearchSymbols(ctx context.Context, query string) ([]string, error) {
+	// Yahoo Finance doesn't have a direct search API in this implementation
+	// For now, return empty - could be extended with web scraping or another API
+	return []string{}, nil
+}

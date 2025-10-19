@@ -6,24 +6,30 @@ import (
 )
 
 type Config struct {
-	Port            string
-	RedisURL        string
-	AlphaVantageKey string
-	IEXCloudKey     string
-	Environment     string
-	UseMockData     bool
-	CacheTTL        int // Cache TTL in seconds
+	Port               string
+	RedisURL           string
+	AlphaVantageKey    string
+	IEXCloudKey        string
+	FinnhubAPIKey      string
+	MarketDataProvider string
+	Environment        string
+	UseMockData        bool
+	CacheTTL           int // Cache TTL in seconds
+	MaxRequestsPerMin  int // Rate limiting
 }
 
 func Load() *Config {
 	return &Config{
-		Port:            getEnv("PORT", "8080"),
-		RedisURL:        getEnv("REDIS_URL", "redis://localhost:6379"),
-		AlphaVantageKey: getEnv("ALPHA_VANTAGE_API_KEY", ""),
-		IEXCloudKey:     getEnv("IEX_CLOUD_API_KEY", ""),
-		Environment:     getEnv("ENVIRONMENT", "development"),
-		UseMockData:     getEnvAsBool("USE_MOCK_DATA", false),
-		CacheTTL:        getEnvAsInt("CACHE_TTL_SECONDS", 300), // 5 minutes default
+		Port:               getEnv("PORT", "8080"),
+		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6379"),
+		AlphaVantageKey:    getEnv("ALPHA_VANTAGE_API_KEY", ""),
+		IEXCloudKey:        getEnv("IEX_CLOUD_API_KEY", ""),
+		FinnhubAPIKey:      getEnv("FINNHUB_API_KEY", ""),
+		MarketDataProvider: getEnv("MARKET_DATA_PROVIDER", "yahoo"),
+		Environment:        getEnv("ENVIRONMENT", "development"),
+		UseMockData:        getEnvAsBool("USE_MOCK_DATA", false),
+		CacheTTL:           getEnvAsInt("CACHE_TTL_SECONDS", 300), // 5 minutes default
+		MaxRequestsPerMin:  getEnvAsInt("MAX_REQUESTS_PER_MINUTE", 60),
 	}
 }
 

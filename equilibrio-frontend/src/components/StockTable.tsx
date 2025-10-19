@@ -13,6 +13,8 @@ interface StockTableProps {
   onRowExpand: (symbol: string | null) => void;
   expandedRow: string | null;
   onStockClick: (stock: StockData) => void;
+  onToggleFavorite: (symbol: string) => void;
+  isFavorite: (symbol: string) => boolean;
 }
 
 const StockTable: React.FC<StockTableProps> = ({
@@ -24,6 +26,8 @@ const StockTable: React.FC<StockTableProps> = ({
   onRowExpand,
   expandedRow,
   onStockClick,
+  onToggleFavorite,
+  isFavorite,
 }) => {
 
   if (loading) {
@@ -89,6 +93,7 @@ const StockTable: React.FC<StockTableProps> = ({
               <TableHeader label="Trend" align="center" />
               <TableHeader label="Signal" align="center" />
               <TableHeader label="Sector" />
+              <TableHeader label="⭐" align="center" />
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -100,12 +105,14 @@ const StockTable: React.FC<StockTableProps> = ({
                   isExpanded={expandedRow === stock.symbol}
                   onToggleExpand={() => onRowExpand(expandedRow === stock.symbol ? null : stock.symbol)}
                   onStockClick={() => onStockClick(stock)}
+                  onToggleFavorite={() => onToggleFavorite(stock.symbol)}
+                  isFavorite={isFavorite(stock.symbol)}
                 />
                 
                 {/* Expanded Details Row */}
                 {expandedRow === stock.symbol && (
                   <tr className="bg-slate-50 dark:bg-slate-700/30">
-                    <td colSpan={10} className="px-4 py-4">
+                    <td colSpan={11} className="px-4 py-4">
                       <StockDetails stock={stock} />
                     </td>
                   </tr>

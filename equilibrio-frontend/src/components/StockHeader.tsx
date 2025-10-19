@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, RefreshCw, Download, Plus, TrendingUp, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, Download, TrendingUp, AlertCircle, Star, Trash2 } from 'lucide-react';
 import { StockFilter, StockFilters, StockData } from '../types';
 import ThemeToggle from './ui/ThemeToggle';
 import FilterPresets from './FilterPresets';
 import { ApiService } from '../services/api';
+import { useFavorites } from '../hooks/useFavorites';
 
 interface StockHeaderProps {
   filters: StockFilter;
@@ -30,6 +31,22 @@ const StockHeader: React.FC<StockHeaderProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [showFavorites, setShowFavorites] = useState(false);
+  
+  const { favorites, clearFavorites, addFavorite } = useFavorites();
+
+  // Close favorites dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showFavorites && !target.closest('.favorites-dropdown')) {
+        setShowFavorites(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFavorites]);
 
   // Check if search term is a potential ticker symbol (not in current list)
   useEffect(() => {
@@ -60,7 +77,9 @@ const StockHeader: React.FC<StockHeaderProps> = ({
       
       if (onAddStock) {
         onAddStock(stock);
-        setAddSuccess(`${stock.symbol} added successfully!`);
+        // Add to favorites automatically
+        addFavorite(stock.symbol);
+        setAddSuccess(`${stock.symbol} added to favorites!`);
         
         // Clear search after 2 seconds
         setTimeout(() => {
@@ -84,12 +103,56 @@ const StockHeader: React.FC<StockHeaderProps> = ({
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 mb-6 transition-colors">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Stock Scanner</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">Equilibrium-based swing trading analysis</p>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Equilibrio Scanner</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1 font-licorice">Equilibrium-based swing trading analysis</p>
         </div>
         <div className="flex gap-3">
           <ThemeToggle />
           <FilterPresets currentFilters={filters} onLoadPreset={onLoadPreset} />
+          
+          {/* Favorites Management */}
+          <div className="relative favorites-dropdown">
+            <button
+              onClick={() => setShowFavorites(!showFavorites)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            >
+              <Star className="w-4 h-4 fill-current" />
+              Favorites ({favorites.length})
+            </button>
+            
+            {showFavorites && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-200">Favorites</h3>
+                    {favorites.length > 0 && (
+                      <button
+                        onClick={clearFavorites}
+                        className="text-red-600 hover:text-red-700 text-sm flex items-center gap-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                  
+                  {favorites.length === 0 ? (
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">No favorites yet. Click the ⭐ on any stock to add it.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {favorites.map((symbol, index) => (
+                        <div key={symbol} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded">
+                          <span className="font-mono text-sm text-slate-800 dark:text-slate-200">{symbol}</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">#{index + 1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
           <button
             onClick={onRefresh}
             disabled={loading}
@@ -115,9 +178,15 @@ const StockHeader: React.FC<StockHeaderProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by symbol or name... (e.g., AAPL, TSLA, BTC-USD)"
+              placeholder="Search by symbol or name (min 3 chars)... (e.g., AAPL, TSLA, BTC-USD)"
               value={filters.searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && showAddButton && !isAdding) {
+                  e.preventDefault();
+                  handleAddStock();
+                }
+              }}
               className="w-full pl-10 pr-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
             />
           </div>
@@ -127,14 +196,14 @@ const StockHeader: React.FC<StockHeaderProps> = ({
               onClick={handleAddStock}
               disabled={isAdding}
               className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
-              title={`Add ${filters.searchTerm.toUpperCase()} to list`}
+              title={`Add ${filters.searchTerm.toUpperCase()} to favorites`}
             >
               {isAdding ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
               ) : (
-                <Plus className="w-5 h-5" />
+                <Star className="w-5 h-5 fill-current" />
               )}
-              <span className="hidden sm:inline">Add Ticker</span>
+              <span className="hidden sm:inline">Add to Favorites</span>
             </button>
           )}
         </div>
@@ -156,11 +225,18 @@ const StockHeader: React.FC<StockHeaderProps> = ({
         )}
 
         {/* Helper Text */}
+        {filters.searchTerm.length > 0 && filters.searchTerm.length < 3 && (
+          <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>Enter at least 3 characters to search</span>
+          </p>
+        )}
+        
         {showAddButton && !addError && !addSuccess && (
           <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
             <TrendingUp size={16} />
             <span>
-              <strong>{filters.searchTerm.toUpperCase()}</strong> not in list. Click <Plus className="inline w-4 h-4" /> to add it!
+              <strong>{filters.searchTerm.toUpperCase()}</strong> not in list. Click <Star className="inline w-4 h-4 fill-current text-yellow-500" /> or press <kbd className="px-1 py-0.5 text-xs bg-slate-200 dark:bg-slate-600 rounded">Enter</kbd> to add to favorites!
             </span>
           </p>
         )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { StockData } from '../../types';
 import { 
   getRSIColor, 
@@ -18,9 +18,18 @@ interface StockRowProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onStockClick: () => void;
+  onToggleFavorite: () => void;
+  isFavorite: boolean;
 }
 
-const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand, onStockClick }) => {
+const StockRow: React.FC<StockRowProps> = ({ 
+  stock, 
+  isExpanded, 
+  onToggleExpand, 
+  onStockClick, 
+  onToggleFavorite, 
+  isFavorite 
+}) => {
   return (
     <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={onStockClick}>
       <td className="px-4 py-3 whitespace-nowrap">
@@ -74,6 +83,23 @@ const StockRow: React.FC<StockRowProps> = ({ stock, isExpanded, onToggleExpand, 
       
       <td className="px-4 py-3">
         <span className="text-sm text-slate-700 dark:text-slate-300">{stock.sector}</span>
+      </td>
+      
+      <td className="px-4 py-3 text-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          className={`transition-colors ${
+            isFavorite 
+              ? 'text-yellow-500 hover:text-yellow-600' 
+              : 'text-slate-400 hover:text-yellow-500'
+          }`}
+          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Star className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+        </button>
       </td>
       
       <td className="px-4 py-3">

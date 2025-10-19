@@ -3,14 +3,28 @@ import { useQuery, useQueryClient } from 'react-query';
 import { StockData, StockListRequest, StockListResponse, StockFilter } from '../types';
 import { ApiService } from '../services/api';
 import { saveFilterConfig, loadFilterConfig, clearFilterConfig } from '../utils/filterStorage';
+import { useDebounce } from './useDebounce';
 
 export const useStocks = (request: StockListRequest) => {
   const queryClient = useQueryClient();
 
+  // Debounce the search term with 500ms delay
+  const debouncedSearchTerm = useDebounce(request.searchTerm, 500);
+
+  // Create a modified request with debounced search term
+  const debouncedRequest = {
+    ...request,
+    searchTerm: debouncedSearchTerm,
+  };
+
+  // Only enable the query if search term is empty or has at least 3 characters
+  const shouldFetch = !debouncedSearchTerm || debouncedSearchTerm.length >= 3;
+
   const query = useQuery<StockListResponse, Error>(
-    ['stocks', request],
-    () => ApiService.getStocks(request),
+    ['stocks', debouncedRequest],
+    () => ApiService.getStocks(debouncedRequest),
     {
+      enabled: shouldFetch,
       staleTime: 30000, // 30 seconds
       cacheTime: 300000, // 5 minutes
       refetchOnWindowFocus: false,

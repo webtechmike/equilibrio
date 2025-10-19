@@ -17,11 +17,12 @@ import (
 )
 
 type MarketDataService struct {
-	config        *config.Config
-	cache         *redis.Client
-	cacheStrategy *MarketCacheStrategy
-	yahooProvider *YahooHTTPProvider
-	indicators    *EquilibriumCalculator
+	config          *config.Config
+	cache           *redis.Client
+	cacheStrategy   *MarketCacheStrategy
+	yahooProvider   *YahooHTTPProvider
+	finnhubProvider *RateLimitedFinnhubProvider
+	indicators      *EquilibriumCalculator
 }
 
 func NewMarketDataService(cfg *config.Config) *MarketDataService {
@@ -36,18 +37,39 @@ func NewMarketDataService(cfg *config.Config) *MarketDataService {
 
 	rdb := redis.NewClient(opt)
 
+	// Initialize market data provider based on configuration
+	var finnhubProvider *RateLimitedFinnhubProvider
+	if cfg.MarketDataProvider == "finnhub" && cfg.FinnhubAPIKey != "" {
+		finnhubProvider = NewRateLimitedFinnhubProvider(cfg.FinnhubAPIKey, cfg.MaxRequestsPerMin)
+	}
+
 	return &MarketDataService{
-		config:        cfg,
-		cache:         rdb,
-		cacheStrategy: NewMarketCacheStrategy(rdb),
-		yahooProvider: NewYahooHTTPProvider(),       // Use HTTP provider
-		indicators:    NewEquilibriumCalculator(20), // 20-day lookback
+		config:          cfg,
+		cache:           rdb,
+		cacheStrategy:   NewMarketCacheStrategy(rdb),
+		yahooProvider:   NewYahooHTTPProvider(), // Use HTTP provider
+		finnhubProvider: finnhubProvider,
+		indicators:      NewEquilibriumCalculator(20), // 20-day lookback
 	}
 }
 
 // GetStocks retrieves and filters stocks based on the request
 func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.StockData, int, error) {
 	ctx := context.Background()
+
+	// Check cache first
+	cacheKey := fmt.Sprintf("stocks:%s", s.generateCacheKey(req))
+	cached, err := s.cache.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var cacheData struct {
+			Stocks []models.StockData `json:"stocks"`
+			Total  int                `json:"total"`
+		}
+		if json.Unmarshal([]byte(cached), &cacheData) == nil {
+			fmt.Printf("Cache hit for stocks request\n")
+			return cacheData.Stocks, cacheData.Total, nil
+		}
+	}
 
 	// Log market status
 	marketStatus := s.cacheStrategy.GetMarketStatus()
@@ -136,9 +158,9 @@ func (s *MarketDataService) GetStocks(req models.StockListRequest) ([]models.Sto
 		Total:  total,
 	}
 
-	// Use market-aware caching
-	if err := s.cacheStrategy.CacheStockData(ctx, fmt.Sprintf("stocks:%s", s.generateCacheKey(req)), cacheData); err != nil {
-		fmt.Printf("Failed to cache results: %v\n", err)
+	// Use simple caching for now
+	if data, err := json.Marshal(cacheData); err == nil {
+		s.cache.Set(ctx, cacheKey, data, 5*time.Minute)
 	}
 
 	return paginatedStocks, total, nil
@@ -159,7 +181,7 @@ func (s *MarketDataService) GetStock(symbol string) (*models.StockData, error) {
 	// Generate mock data for the symbol
 	stocks := s.generateMockStockData()
 	for _, stock := range stocks {
-		if strings.ToUpper(stock.Symbol) == strings.ToUpper(symbol) {
+		if strings.EqualFold(stock.Symbol, symbol) {
 			// Cache the result
 			if data, err := json.Marshal(stock); err == nil {
 				s.cache.Set(context.Background(), cacheKey, data, 30*time.Second)
@@ -212,22 +234,46 @@ func (s *MarketDataService) SearchStock(symbol string) (*models.StockData, error
 		return &gen, nil
 	}
 
-	// Fetch from Yahoo Finance
-	quote, err := s.yahooProvider.GetQuote(ctx, symbol)
+	// Choose provider based on configuration
+	var provider MarketDataProvider
+	if s.config.MarketDataProvider == "finnhub" && s.finnhubProvider != nil {
+		provider = s.finnhubProvider
+		fmt.Printf("Using Finnhub provider for %s\n", symbol)
+	} else {
+		provider = s.yahooProvider
+		fmt.Printf("Using Yahoo provider for %s\n", symbol)
+	}
+
+	// Fetch quote
+	quote, err := provider.GetQuote(ctx, symbol)
 	if err != nil {
 		// Fallback to snapshot or deterministic mock
 		return s.fallbackSearchFromSnapshotOrMock(ctx, symbol)
 	}
 
 	// Fetch historical data for indicators (90 days)
-	historical, err := s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
-	if err != nil || len(historical) == 0 {
-		// Fallback to snapshot or deterministic mock
-		return s.fallbackSearchFromSnapshotOrMock(ctx, symbol)
+	// Use Yahoo Finance for historical data since Finnhub free tier doesn't include it
+	var historical []models.CandlestickData
+	var histErr error
+
+	if s.config.MarketDataProvider == "finnhub" {
+		// For Finnhub, use Yahoo Finance for historical data
+		historical, histErr = s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
+		if histErr != nil || len(historical) == 0 {
+			// Fallback to snapshot or deterministic mock
+			return s.fallbackSearchFromSnapshotOrMock(ctx, symbol)
+		}
+	} else {
+		// For other providers, use the configured provider
+		historical, histErr = provider.GetHistoricalPrices(ctx, symbol, 90)
+		if histErr != nil || len(historical) == 0 {
+			// Fallback to snapshot or deterministic mock
+			return s.fallbackSearchFromSnapshotOrMock(ctx, symbol)
+		}
 	}
 
 	// Calculate technical indicators
-	indicators := s.yahooProvider.CalculateTechnicalIndicators(historical)
+	indicators := provider.CalculateTechnicalIndicators(historical)
 
 	// Calculate equilibrium
 	equilibrium := s.indicators.CalculateEquilibrium(historical, quote.Price)
@@ -592,8 +638,24 @@ func (s *MarketDataService) GetStockChartWithDays(symbol string, days int) (*mod
 		// Generate mock candlestick data for specified days
 		data = s.generateMockChartData(stock.Price, days)
 	} else {
-		// Fetch real historical data from Yahoo Finance
-		data, err = s.yahooProvider.GetHistoricalPrices(context.Background(), symbol, days)
+		// Choose provider based on configuration
+		var provider MarketDataProvider
+		if s.config.MarketDataProvider == "finnhub" && s.finnhubProvider != nil {
+			provider = s.finnhubProvider
+		} else {
+			provider = s.yahooProvider
+		}
+
+		// Fetch real historical data
+		// Use Yahoo Finance for historical data since Finnhub free tier doesn't include it
+		if s.config.MarketDataProvider == "finnhub" {
+			// For Finnhub, use Yahoo Finance for historical data
+			data, err = s.yahooProvider.GetHistoricalPrices(context.Background(), symbol, days)
+		} else {
+			// For other providers, use the configured provider
+			data, err = provider.GetHistoricalPrices(context.Background(), symbol, days)
+		}
+
 		if err != nil {
 			// Fallback to mock data
 			fmt.Printf("Failed to fetch real chart data, using mock: %v\n", err)
@@ -1049,23 +1111,47 @@ func (s *MarketDataService) getRealStockData() ([]models.StockData, error) {
 	var stocks []models.StockData
 	ctx := context.Background()
 
+	// Choose provider based on configuration
+	var provider MarketDataProvider
+	if s.config.MarketDataProvider == "finnhub" && s.finnhubProvider != nil {
+		provider = s.finnhubProvider
+		fmt.Println("Using Finnhub provider for real stock data")
+	} else {
+		provider = s.yahooProvider
+		fmt.Println("Using Yahoo provider for real stock data")
+	}
+
 	for _, symbol := range symbols {
 		// Fetch quote
-		quote, err := s.yahooProvider.GetQuote(ctx, symbol)
+		quote, err := provider.GetQuote(ctx, symbol)
 		if err != nil {
 			fmt.Printf("Failed to fetch %s: %v\n", symbol, err)
 			continue
 		}
 
 		// Fetch historical data for indicators (90 days)
-		historical, err := s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
-		if err != nil || len(historical) == 0 {
-			fmt.Printf("Failed to fetch historical data for %s: %v\n", symbol, err)
-			continue
+		// Use Yahoo Finance for historical data since Finnhub free tier doesn't include it
+		var historical []models.CandlestickData
+		var histErr error
+
+		if s.config.MarketDataProvider == "finnhub" {
+			// For Finnhub, use Yahoo Finance for historical data
+			historical, histErr = s.yahooProvider.GetHistoricalPrices(ctx, symbol, 90)
+			if histErr != nil || len(historical) == 0 {
+				fmt.Printf("Failed to fetch historical data for %s: %v\n", symbol, histErr)
+				continue
+			}
+		} else {
+			// For other providers, use the configured provider
+			historical, histErr = provider.GetHistoricalPrices(ctx, symbol, 90)
+			if histErr != nil || len(historical) == 0 {
+				fmt.Printf("Failed to fetch historical data for %s: %v\n", symbol, histErr)
+				continue
+			}
 		}
 
 		// Calculate technical indicators
-		indicators := s.yahooProvider.CalculateTechnicalIndicators(historical)
+		indicators := provider.CalculateTechnicalIndicators(historical)
 
 		// Calculate equilibrium
 		equilibrium := s.indicators.CalculateEquilibrium(historical, quote.Price)

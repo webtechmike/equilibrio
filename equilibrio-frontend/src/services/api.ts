@@ -4,7 +4,7 @@ import { StockData, StockListRequest, StockListResponse, TechnicalIndicators, Ca
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 60000, // Increased to 60 seconds
   headers: {
     'Content-Type': 'application/json',
   },

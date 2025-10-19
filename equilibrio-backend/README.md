@@ -5,8 +5,10 @@ A Go-based backend service for the Equilibrio stock scanner application, providi
 ## Features
 
 - **Stock Data API**: Retrieve and filter stock information
+- **Multiple Data Providers**: Support for Finnhub and Yahoo Finance
 - **Technical Indicators**: Calculate RSI, MACD, moving averages, and equilibrium levels
 - **Real-time Updates**: WebSocket support for live data
+- **Rate Limiting**: Built-in rate limiting for API providers
 - **Caching**: Redis-based caching for improved performance
 - **Export**: CSV export functionality
 - **RESTful API**: Clean REST API design
@@ -17,7 +19,7 @@ A Go-based backend service for the Equilibrio stock scanner application, providi
 
 - Go 1.21 or higher
 - Redis server
-- (Optional) Market data API keys (Alpha Vantage, IEX Cloud)
+- (Optional) Market data API keys (Finnhub, Alpha Vantage, IEX Cloud)
 
 ### Installation
 
@@ -84,13 +86,44 @@ The server will start on `http://localhost:8080`
 - `page` - Page number (default: 1)
 - `pageSize` - Items per page (default: 50)
 
+## Market Data Providers
+
+The backend supports multiple market data providers:
+
+### Finnhub (Recommended)
+- **Free tier**: 60 calls/minute
+- **Real-time quotes**: Current price, change, volume
+- **Historical data**: Daily OHLC data
+- **Company profiles**: Sector, industry, market cap
+- **Setup**: Get API key from [Finnhub.io](https://finnhub.io/)
+
+### Yahoo Finance
+- **Free**: No API key required
+- **Real-time quotes**: Basic stock information
+- **Historical data**: Daily candlestick data
+- **Limitations**: Unofficial API, rate limits may apply
+
+### Configuration
+Set your preferred provider in `.env`:
+```bash
+MARKET_DATA_PROVIDER=finnhub  # or "yahoo"
+FINNHUB_API_KEY=your_finnhub_api_key
+MAX_REQUESTS_PER_MINUTE=60
+```
+
+For detailed setup instructions, see [FINNHUB_INTEGRATION.md](FINNHUB_INTEGRATION.md).
+
 ## Environment Variables
 
 - `PORT` - Server port (default: 8080)
 - `ENVIRONMENT` - Environment (development, production)
 - `REDIS_URL` - Redis connection URL
+- `MARKET_DATA_PROVIDER` - Provider to use (finnhub, yahoo)
+- `FINNHUB_API_KEY` - Finnhub API key
 - `ALPHA_VANTAGE_API_KEY` - Alpha Vantage API key
 - `IEX_CLOUD_API_KEY` - IEX Cloud API key
+- `MAX_REQUESTS_PER_MINUTE` - Rate limiting (default: 60)
+- `CACHE_TTL_SECONDS` - Cache TTL in seconds (default: 300)
 - `CORS_ORIGIN` - CORS origin for frontend
 
 ## Docker

@@ -19,6 +19,9 @@ type MarketDataProvider interface {
 
 	// GetMarketSnapshot gets current market overview
 	GetMarketSnapshot(ctx context.Context, symbols []string) (map[string]*models.Quote, error)
+
+	// CalculateTechnicalIndicators calculates technical indicators from historical data
+	CalculateTechnicalIndicators(candles []models.CandlestickData) models.TechnicalIndicators
 }
 
 // Quote represents a real-time stock quote
